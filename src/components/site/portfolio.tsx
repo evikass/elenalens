@@ -105,6 +105,15 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-75.jpg`, title: 'С цветами на осенней тропинке', cat: 'Осенняя семья', span: 'tall' },
   { src: `${basePath}/work-76.jpg`, title: 'Мама и две дочки с яблоками', cat: 'Осенняя семья', span: 'wide' },
   { src: `${basePath}/work-77.jpg`, title: 'Улыбающаяся девочка в розовом', cat: 'Осенняя семья' },
+  // Новогодние и студийные детские, деловые портреты
+  { src: `${basePath}/work-78.jpg`, title: 'Сердечко у ёлки', cat: 'Дети', span: 'wide' },
+  { src: `${basePath}/work-79.jpg`, title: 'В студии с цветочными декорациями', cat: 'Дети' },
+  { src: `${basePath}/work-80.jpg`, title: 'Деловой портрет за столом', cat: 'Контент' },
+  { src: `${basePath}/work-81.jpg`, title: 'На голубом стуле в студии', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-82.jpg`, title: 'На розовом фоне с шарами', cat: 'Дети', span: 'wide' },
+  { src: `${basePath}/work-83.jpg`, title: 'На стуле с цветочным мольбертом', cat: 'Дети', span: 'tall' },
+  { src: `${basePath}/work-84.jpg`, title: 'Семья у новогодней ёлки', cat: 'Семья', span: 'wide' },
+  { src: `${basePath}/work-85.jpg`, title: 'Элегантная уверенность в студии', cat: 'Контент', span: 'tall' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage

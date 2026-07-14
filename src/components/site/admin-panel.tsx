@@ -111,6 +111,14 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-75.jpg`, filename: 'work-75.jpg', title: 'С цветами на осенней тропинке', cat: 'Осенняя семья' },
   { src: `${basePath}/work-76.jpg`, filename: 'work-76.jpg', title: 'Мама и две дочки с яблоками', cat: 'Осенняя семья' },
   { src: `${basePath}/work-77.jpg`, filename: 'work-77.jpg', title: 'Улыбающаяся девочка в розовом', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-78.jpg`, filename: 'work-78.jpg', title: 'Сердечко у ёлки', cat: 'Дети' },
+  { src: `${basePath}/work-79.jpg`, filename: 'work-79.jpg', title: 'В студии с цветочными декорациями', cat: 'Дети' },
+  { src: `${basePath}/work-80.jpg`, filename: 'work-80.jpg', title: 'Деловой портрет за столом', cat: 'Контент' },
+  { src: `${basePath}/work-81.jpg`, filename: 'work-81.jpg', title: 'На голубом стуле в студии', cat: 'Контент' },
+  { src: `${basePath}/work-82.jpg`, filename: 'work-82.jpg', title: 'На розовом фоне с шарами', cat: 'Дети' },
+  { src: `${basePath}/work-83.jpg`, filename: 'work-83.jpg', title: 'На стуле с цветочным мольбертом', cat: 'Дети' },
+  { src: `${basePath}/work-84.jpg`, filename: 'work-84.jpg', title: 'Семья у новогодней ёлки', cat: 'Семья' },
+  { src: `${basePath}/work-85.jpg`, filename: 'work-85.jpg', title: 'Элегантная уверенность в студии', cat: 'Контент' },
 ]
 
 interface AdminOverride {
