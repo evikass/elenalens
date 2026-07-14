@@ -60,6 +60,16 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-24.jpg`, filename: 'work-24.jpg', title: 'В саду с гортензиями', cat: 'Портрет' },
   { src: `${basePath}/work-25.jpg`, filename: 'work-25.jpg', title: 'У колеса обозрения', cat: 'Свадьба' },
   { src: `${basePath}/work-26.jpg`, filename: 'work-26.jpg', title: 'Осенний сад', cat: 'Портрет' },
+  { src: `${basePath}/work-27.jpg`, filename: 'work-27.jpg', title: 'Съёмка для ЦУМ', cat: 'Контент' },
+  { src: `${basePath}/work-28.jpg`, filename: 'work-28.jpg', title: 'Деловой образ с чашкой', cat: 'Контент' },
+  { src: `${basePath}/work-29.jpg`, filename: 'work-29.jpg', title: 'С камерой в снегу', cat: 'Портрет' },
+  { src: `${basePath}/work-30.jpg`, filename: 'work-30.jpg', title: 'В кофейне', cat: 'Контент' },
+  { src: `${basePath}/work-31.jpg`, filename: 'work-31.jpg', title: 'У фиолетовой двери', cat: 'Портрет' },
+  { src: `${basePath}/work-32.jpg`, filename: 'work-32.jpg', title: 'Бизнес-портрет в офисе', cat: 'Контент' },
+  { src: `${basePath}/work-33.jpg`, filename: 'work-33.jpg', title: 'У цветущего куста', cat: 'Портрет' },
+  { src: `${basePath}/work-34.jpg`, filename: 'work-34.jpg', title: 'Сердечко в зеркале', cat: 'Портрет' },
+  { src: `${basePath}/work-35.jpg`, filename: 'work-35.jpg', title: 'Команда tsamkirov.ru', cat: 'Контент' },
+  { src: `${basePath}/work-36.jpg`, filename: 'work-36.jpg', title: 'Деловой портрет на диване', cat: 'Контент' },
 ]
 
 interface AdminOverride {
