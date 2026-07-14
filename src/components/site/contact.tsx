@@ -2,51 +2,61 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Phone, MapPin, Send, Check, MessageCircle, Loader2 } from 'lucide-react'
+import {
+  Phone,
+  MapPin,
+  Send,
+  Check,
+  MessageCircle,
+  Loader2,
+  Copy,
+  ExternalLink,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 
-// Telegram bot config — filled in by Elena later.
-// To enable: create a bot via @BotFather, get the token, send any message
-// to the bot from Elena's account, then visit
-// https://api.telegram.org/bot<TOKEN>/getUpdates to find her chat_id.
-// Then set these values below OR via localStorage keys:
-//   localStorage.setItem('tg_bot_token', '...')
-//   localStorage.setItem('tg_chat_id', '...')
+// VK username — Elena's page
+const VK_USERNAME = 'elenapentina'
+
+// Telegram bot config — filled in via admin panel
 const DEFAULT_TG_TOKEN = ''
 const DEFAULT_TG_CHAT_ID = ''
 
-async function sendToTelegram(payload: {
+interface FormPayload {
   name: string
   contact: string
   service: string
   message: string
-}): Promise<{ ok: boolean; error?: string }> {
+}
+
+function buildMessageText(p: FormPayload): string {
+  return (
+    `📸 Новая заявка с сайта ElenaLens\n\n` +
+    `👤 Имя: ${p.name}\n` +
+    `📞 Контакт: ${p.contact}\n` +
+    `🎯 Услуга: ${p.service}\n` +
+    (p.message ? `💬 Комментарий: ${p.message}\n` : '')
+  )
+}
+
+async function sendToTelegram(
+  payload: FormPayload
+): Promise<{ ok: boolean; error?: string }> {
   let token = DEFAULT_TG_TOKEN
   let chatId = DEFAULT_TG_CHAT_ID
 
-  // Allow overriding via localStorage (so Elena can configure without redeploy)
   if (typeof window !== 'undefined') {
     token = localStorage.getItem('tg_bot_token') || token
     chatId = localStorage.getItem('tg_chat_id') || chatId
   }
 
-  // If not configured, fall back to mailto: link so the form still "works"
+  // If Telegram is not configured, treat as "skipped" (not error)
   if (!token || !chatId) {
-    const text = `Новая заявка с сайта ElenaLens%0A%0AИмя: ${payload.name}%0AКонтакт: ${payload.contact}%0AУслуга: ${payload.service}%0AКомментарий: ${payload.message}`
-    window.location.href = `mailto:elenapentina@vk.ru?subject=Заявка ElenaLens&body=${text}`
-    return { ok: true }
+    return { ok: false, error: 'not_configured' }
   }
-
-  const text =
-    `📸 Новая заявка с сайта ElenaLens\n\n` +
-    `👤 Имя: ${payload.name}\n` +
-    `📞 Контакт: ${payload.contact}\n` +
-    `🎯 Услуга: ${payload.service}\n` +
-    (payload.message ? `💬 Комментарий: ${payload.message}\n` : '')
 
   try {
     const res = await fetch(
@@ -56,8 +66,7 @@ async function sendToTelegram(payload: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text,
-          parse_mode: 'HTML',
+          text: buildMessageText(payload),
         }),
       }
     )
@@ -71,10 +80,37 @@ async function sendToTelegram(payload: {
   }
 }
 
+// VK doesn't allow direct API calls from browser (CORS blocked).
+// We use a workaround: copy text to clipboard + open vk.me dialog
+async function sendViaVk(payload: FormPayload): Promise<{ ok: boolean }> {
+  const text = buildMessageText(payload)
+  // Try to copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    try {
+      document.execCommand('copy')
+    } catch {}
+    document.body.removeChild(ta)
+  }
+  // Open VK dialog in new tab
+  window.open(`https://vk.me/${VK_USERNAME}`, '_blank', 'noopener,noreferrer')
+  return { ok: true }
+}
+
 export function Contact() {
   const { toast } = useToast()
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [sendVkToo, setSendVkToo] = useState(false)
+  const [lastPayload, setLastPayload] = useState<FormPayload | null>(null)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -82,25 +118,49 @@ export function Contact() {
 
     const form = e.currentTarget
     const data = new FormData(form)
-    const payload = {
+    const payload: FormPayload = {
       name: String(data.get('name') || ''),
       contact: String(data.get('contact') || ''),
       service: String(data.get('service') || ''),
       message: String(data.get('message') || ''),
     }
+    setLastPayload(payload)
 
-    const result = await sendToTelegram(payload)
+    // 1. Try Telegram first (if configured)
+    const tgResult = await sendToTelegram(payload)
+    let tgSent = tgResult.ok
+    let tgSkipped = tgResult.error === 'not_configured'
+
+    // 2. If user wants VK copy too, do it
+    let vkSent = false
+    if (sendVkToo || tgSkipped) {
+      const vkResult = await sendViaVk(payload)
+      vkSent = vkResult.ok
+    }
 
     setSubmitting(false)
 
-    if (result.ok) {
+    // Build toast message based on what happened
+    if (tgSent && vkSent) {
       setDone(true)
       toast({
-        title: 'Заявка отправлена',
+        title: 'Готово! Заявка отправлена',
+        description:
+          'Уведомление ушло в Telegram, а текст скопирован в ВК — просто вставьте его в открывшемся окне.',
+      })
+    } else if (tgSent) {
+      setDone(true)
+      toast({
+        title: 'Заявка отправлена в Telegram',
         description: 'Елена свяжется с вами в течение 24 часов.',
       })
-      form.reset()
-      setTimeout(() => setDone(false), 4000)
+    } else if (vkSent) {
+      setDone(true)
+      toast({
+        title: 'Открываем ВК',
+        description:
+          'Текст заявки скопирован в буфер обмена. Вставьте его (Ctrl+V) в открывшемся окне ВК и отправьте Елене.',
+      })
     } else {
       toast({
         title: 'Не удалось отправить',
@@ -109,6 +169,23 @@ export function Contact() {
         variant: 'destructive',
       })
     }
+
+    if (tgSent || vkSent) {
+      form.reset()
+      setSendVkToo(false)
+      setTimeout(() => setDone(false), 5000)
+    }
+  }
+
+  // Manual "also send via VK" button (shown after Telegram success)
+  const handleSendVk = async () => {
+    if (!lastPayload) return
+    await sendViaVk(lastPayload)
+    toast({
+      title: 'Открываем ВК',
+      description:
+        'Текст заявки скопирован. Вставьте его (Ctrl+V) в открывшемся окне ВК.',
+    })
   }
 
   return (
@@ -261,6 +338,30 @@ export function Contact() {
                 />
               </div>
 
+              {/* VK copy checkbox */}
+              <label
+                htmlFor="send-vk"
+                className="flex items-start gap-3 p-3 rounded-sm border border-border bg-background/50 hover:border-primary/40 cursor-pointer transition-colors"
+              >
+                <input
+                  id="send-vk"
+                  type="checkbox"
+                  checked={sendVkToo}
+                  onChange={(e) => setSendVkToo(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+                />
+                <span className="flex-1">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                    Также отправить в ВК Елене
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    Текст заявки скопируется в буфер и откроется диалог с Еленой
+                    в ВК — останется только вставить и отправить.
+                  </span>
+                </span>
+              </label>
+
               <Button
                 type="submit"
                 disabled={submitting || done}
@@ -279,10 +380,34 @@ export function Contact() {
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    Отправить заявку
+                    {sendVkToo ? 'Отправить в Telegram + ВК' : 'Отправить заявку'}
                   </>
                 )}
               </Button>
+
+              {/* Manual VK send button (shown after Telegram success) */}
+              {done && lastPayload && !sendVkToo && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col gap-2"
+                >
+                  <p className="text-xs text-center text-muted-foreground">
+                    Хотите также продублировать заявку в ВК?
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleSendVk}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Отправить копию в ВК
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                </motion.div>
+              )}
 
               <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
                 Нажимая кнопку, вы соглашаетесь на обработку персональных

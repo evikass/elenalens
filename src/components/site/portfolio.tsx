@@ -22,12 +22,16 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-1.jpg`, title: 'Невеста в парке у пруда', cat: 'Свадьба', span: 'tall' },
   { src: `${basePath}/work-2.jpg`, title: 'Свадебная прогулка', cat: 'Свадьба', span: 'wide' },
   { src: `${basePath}/work-4.jpg`, title: 'На мосту у воды', cat: 'Свадьба' },
+  { src: `${basePath}/work-20.jpg`, title: 'У окна в интерьере', cat: 'Свадьба' },
+  { src: `${basePath}/work-25.jpg`, title: 'У колеса обозрения', cat: 'Свадьба', span: 'tall' },
   // Портрет
   { src: `${basePath}/work-3.jpg`, title: 'Портрет невесты', cat: 'Портрет', span: 'tall' },
   { src: `${basePath}/work-6.jpg`, title: 'Весенний портрет в саду', cat: 'Портрет' },
   { src: `${basePath}/work-7.jpg`, title: 'Голубые глаза', cat: 'Портрет' },
   { src: `${basePath}/work-12.jpg`, title: 'С белыми тюльпанами', cat: 'Портрет' },
   { src: `${basePath}/work-14.jpg`, title: 'Детский портрет с тюльпанами', cat: 'Портрет' },
+  { src: `${basePath}/work-24.jpg`, title: 'В саду с гортензиями', cat: 'Портрет' },
+  { src: `${basePath}/work-26.jpg`, title: 'Осенний сад', cat: 'Портрет', span: 'tall' },
   // Семья
   { src: `${basePath}/work-8.jpg`, title: 'Мама и дочка', cat: 'Семья' },
   { src: `${basePath}/work-9.jpg`, title: 'Тёплый момент', cat: 'Семья' },
@@ -38,8 +42,11 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-17.jpg`, title: 'Объятие', cat: 'Семья' },
   { src: `${basePath}/work-18.jpg`, title: 'Тёплый день', cat: 'Семья' },
   { src: `${basePath}/work-19.jpg`, title: 'Поцелуй в щёку', cat: 'Семья' },
+  { src: `${basePath}/work-21.jpg`, title: 'На берегу реки', cat: 'Семья', span: 'wide' },
+  { src: `${basePath}/work-23.jpg`, title: 'Игра в воде', cat: 'Семья' },
   // Дети
   { src: `${basePath}/work-11.jpg`, title: 'На подоконнике', cat: 'Дети' },
+  { src: `${basePath}/work-22.jpg`, title: 'Веночек из ромашек', cat: 'Дети', span: 'tall' },
   // Контент
   { src: `${basePath}/work-5.jpg`, title: 'Показ в шоуруме', cat: 'Контент', span: 'wide' },
 ]

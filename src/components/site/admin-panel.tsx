@@ -53,6 +53,13 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-17.jpg`, filename: 'work-17.jpg', title: 'Объятие', cat: 'Семья' },
   { src: `${basePath}/work-18.jpg`, filename: 'work-18.jpg', title: 'Тёплый день', cat: 'Семья' },
   { src: `${basePath}/work-19.jpg`, filename: 'work-19.jpg', title: 'Поцелуй в щёку', cat: 'Семья' },
+  { src: `${basePath}/work-20.jpg`, filename: 'work-20.jpg', title: 'У окна в интерьере', cat: 'Свадьба' },
+  { src: `${basePath}/work-21.jpg`, filename: 'work-21.jpg', title: 'На берегу реки', cat: 'Семья' },
+  { src: `${basePath}/work-22.jpg`, filename: 'work-22.jpg', title: 'Веночек из ромашек', cat: 'Дети' },
+  { src: `${basePath}/work-23.jpg`, filename: 'work-23.jpg', title: 'Игра в воде', cat: 'Семья' },
+  { src: `${basePath}/work-24.jpg`, filename: 'work-24.jpg', title: 'В саду с гортензиями', cat: 'Портрет' },
+  { src: `${basePath}/work-25.jpg`, filename: 'work-25.jpg', title: 'У колеса обозрения', cat: 'Свадьба' },
+  { src: `${basePath}/work-26.jpg`, filename: 'work-26.jpg', title: 'Осенний сад', cat: 'Портрет' },
 ]
 
 interface AdminOverride {
