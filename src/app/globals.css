@@ -196,4 +196,26 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Watercolor effect — applies a soft, painterly look to photos */
+  .watercolor-filter {
+    filter:
+      saturate(1.18)
+      contrast(0.94)
+      brightness(1.04)
+      blur(0.4px);
+    mix-blend-mode: normal;
+    transition: filter 0.4s ease;
+  }
+
+  /* Watercolor overlay (used together with the filter for richer effect) */
+  .watercolor-filter::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 30%, oklch(0.82 0.13 75 / 0.08), transparent 60%),
+      radial-gradient(circle at 70% 70%, oklch(0.70 0.10 50 / 0.06), transparent 50%);
+    pointer-events: none;
+  }
 }

@@ -7,6 +7,7 @@ import { Process } from '@/components/site/process'
 import { Testimonials } from '@/components/site/testimonials'
 import { Contact } from '@/components/site/contact'
 import { Footer } from '@/components/site/footer'
+import { AdminPanel } from '@/components/site/admin-panel'
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
+      <AdminPanel />
     </div>
   )
 }

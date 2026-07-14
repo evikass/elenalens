@@ -2,12 +2,74 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Phone, MapPin, Send, Check, MessageCircle } from 'lucide-react'
+import { Phone, MapPin, Send, Check, MessageCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+
+// Telegram bot config — filled in by Elena later.
+// To enable: create a bot via @BotFather, get the token, send any message
+// to the bot from Elena's account, then visit
+// https://api.telegram.org/bot<TOKEN>/getUpdates to find her chat_id.
+// Then set these values below OR via localStorage keys:
+//   localStorage.setItem('tg_bot_token', '...')
+//   localStorage.setItem('tg_chat_id', '...')
+const DEFAULT_TG_TOKEN = ''
+const DEFAULT_TG_CHAT_ID = ''
+
+async function sendToTelegram(payload: {
+  name: string
+  contact: string
+  service: string
+  message: string
+}): Promise<{ ok: boolean; error?: string }> {
+  let token = DEFAULT_TG_TOKEN
+  let chatId = DEFAULT_TG_CHAT_ID
+
+  // Allow overriding via localStorage (so Elena can configure without redeploy)
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('tg_bot_token') || token
+    chatId = localStorage.getItem('tg_chat_id') || chatId
+  }
+
+  // If not configured, fall back to mailto: link so the form still "works"
+  if (!token || !chatId) {
+    const text = `Новая заявка с сайта ElenaLens%0A%0AИмя: ${payload.name}%0AКонтакт: ${payload.contact}%0AУслуга: ${payload.service}%0AКомментарий: ${payload.message}`
+    window.location.href = `mailto:elenapentina@vk.ru?subject=Заявка ElenaLens&body=${text}`
+    return { ok: true }
+  }
+
+  const text =
+    `📸 Новая заявка с сайта ElenaLens\n\n` +
+    `👤 Имя: ${payload.name}\n` +
+    `📞 Контакт: ${payload.contact}\n` +
+    `🎯 Услуга: ${payload.service}\n` +
+    (payload.message ? `💬 Комментарий: ${payload.message}\n` : '')
+
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          parse_mode: 'HTML',
+        }),
+      }
+    )
+    const data = await res.json()
+    if (!data.ok) {
+      return { ok: false, error: data.description || 'Telegram error' }
+    }
+    return { ok: true }
+  } catch (err: any) {
+    return { ok: false, error: err?.message || 'network error' }
+  }
+}
 
 export function Contact() {
   const { toast } = useToast()
@@ -27,18 +89,26 @@ export function Contact() {
       message: String(data.get('message') || ''),
     }
 
-    // Simulate async submission (no backend required for a one-page site).
-    await new Promise((r) => setTimeout(r, 900))
+    const result = await sendToTelegram(payload)
 
     setSubmitting(false)
-    setDone(true)
-    toast({
-      title: 'Заявка отправлена',
-      description: 'Елена свяжется с вами в течение 24 часов.',
-    })
 
-    form.reset()
-    setTimeout(() => setDone(false), 4000)
+    if (result.ok) {
+      setDone(true)
+      toast({
+        title: 'Заявка отправлена',
+        description: 'Елена свяжется с вами в течение 24 часов.',
+      })
+      form.reset()
+      setTimeout(() => setDone(false), 4000)
+    } else {
+      toast({
+        title: 'Не удалось отправить',
+        description:
+          'Произошла ошибка. Пожалуйста, напишите Елене напрямую в ВК или позвоните.',
+        variant: 'destructive',
+      })
+    }
   }
 
   return (
@@ -198,7 +268,7 @@ export function Contact() {
               >
                 {submitting ? (
                   <>
-                    <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Отправляем...
                   </>
                 ) : done ? (
