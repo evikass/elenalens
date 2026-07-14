@@ -22,7 +22,7 @@ export function About() {
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             className="relative order-2 lg:order-1"
           >
-            <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0">
+            <div className="relative aspect-[3/4] max-w-sm mx-auto lg:mx-0">
               <div className="absolute -inset-4 border border-primary/30 rounded-sm" />
               <Image
                 src={`${basePath}/elena-portrait.jpg`}
@@ -30,6 +30,7 @@ export function About() {
                 fill
                 sizes="(max-width: 768px) 100vw, 400px"
                 className="relative h-full w-full object-cover rounded-sm grayscale-[15%]"
+                style={{ objectPosition: 'top center' }}
                 priority
               />
               <div className="absolute -bottom-6 -right-6 lg:right-auto lg:-left-6 bg-background border border-border p-5 rounded-sm shadow-2xl max-w-[200px]">
