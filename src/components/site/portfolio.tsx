@@ -79,6 +79,16 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-51.jpg`, title: 'В высокой траве', cat: 'Дети' },
   { src: `${basePath}/work-52.jpg`, title: 'С подсолнухами в золотом платье', cat: 'Портрет' },
   { src: `${basePath}/work-53.jpg`, title: 'Бежит по мосту в венке', cat: 'Дети', span: 'wide' },
+  // Осенняя портретная серия
+  { src: `${basePath}/work-54.jpg`, title: 'Осенние листья в парке', cat: 'Портрет', span: 'wide' },
+  { src: `${basePath}/work-55.jpg`, title: 'У кирпичной стены', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-56.jpg`, title: 'В берете с листьями', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-57.jpg`, title: 'С осенними листьями', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-58.jpg`, title: 'У кирпича на набережной', cat: 'Портрет', span: 'wide' },
+  { src: `${basePath}/work-59.jpg`, title: 'На ограждении в берете', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-60.jpg`, title: 'С листьями в лесу', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-61.jpg`, title: 'В прыжке на аллее', cat: 'Портрет' },
+  { src: `${basePath}/work-62.jpg`, title: 'На ограждении в парке', cat: 'Портрет', span: 'tall' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
