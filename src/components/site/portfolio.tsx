@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera } from 'lucide-react'
 
-const categories = ['Все', 'Портрет', 'Семья', 'Свадьба', 'Дети', 'Контент'] as const
+const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
+
+const categories = ['Все', 'Портрет', 'Свадьба', 'Контент'] as const
 
 type Cat = (typeof categories)[number]
 
@@ -17,58 +19,38 @@ interface Shot {
 
 const shots: Shot[] = [
   {
-    src: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&q=80',
-    title: 'Авторский женский портрет',
-    cat: 'Портрет',
-    span: 'tall',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
-    title: 'Свадьба Анны и Игоря',
-    cat: 'Свадьба',
-    span: 'wide',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800&q=80',
-    title: 'Семейная прогулка',
-    cat: 'Семья',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?w=800&q=80',
-    title: 'Контент для бренда косметики',
-    cat: 'Контент',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800&q=80',
-    title: 'Первые дни Малыша',
-    cat: 'Дети',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&q=80',
-    title: 'Образный портрет',
-    cat: 'Портрет',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1609220136736-443140cffec6?w=800&q=80',
-    title: 'Свадьба в загородном клубе',
+    src: `${basePath}/work-1.jpg`,
+    title: 'Невеста в парке у пруда',
     cat: 'Свадьба',
     span: 'tall',
   },
   {
-    src: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&q=80',
-    title: 'Контент для селлера',
+    src: `${basePath}/work-5.jpg`,
+    title: 'Показ в шоуруме',
     cat: 'Контент',
     span: 'wide',
   },
   {
-    src: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&q=80',
-    title: 'Семейная съёмка в студии',
-    cat: 'Семья',
+    src: `${basePath}/work-6.jpg`,
+    title: 'Весенний портрет в саду',
+    cat: 'Портрет',
   },
   {
-    src: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=800&q=80',
-    title: 'Утренник в детском саду',
-    cat: 'Дети',
+    src: `${basePath}/work-2.jpg`,
+    title: 'Свадебная прогулка',
+    cat: 'Свадьба',
+  },
+  {
+    src: `${basePath}/work-3.jpg`,
+    title: 'Портрет невесты',
+    cat: 'Портрет',
+    span: 'tall',
+  },
+  {
+    src: `${basePath}/work-4.jpg`,
+    title: 'На мосту у воды',
+    cat: 'Свадьба',
+    span: 'wide',
   },
 ]
 
@@ -100,8 +82,8 @@ export function Portfolio() {
             Кадры, которые <span className="text-gradient-gold italic">говорят</span>
           </h2>
           <p className="mt-5 max-w-2xl mx-auto text-muted-foreground">
-            Небольшая подборка работ. Полное портфолио — более 500 снимков —
-            покажу на личной встрече или в мессенджере.
+            Подборка свежих работ — свадебные съёмки, портреты и контент для
+            бизнеса. Полное портфолио покажу на личной встрече или в ВК.
           </p>
         </motion.div>
 

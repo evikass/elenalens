@@ -13,7 +13,7 @@ export function Hero() {
       {/* Background image */}
       <div className="absolute inset-0">
         <img
-          src="https://images.unsplash.com/photo-1453396450673-3fe83cd2e058?w=1920&q=80"
+          src={`${process.env.NODE_ENV === 'production' ? '/elenalens' : ''}/work-2.jpg`}
           alt="Фотостудия ElenaLens"
           className="h-full w-full object-cover opacity-40"
         />
@@ -37,7 +37,7 @@ export function Hero() {
             ))}
           </span>
           <span className="text-xs tracking-wider uppercase text-muted-foreground">
-            Фотограф · Москва и область
+            Фотограф · Нижний Новгород и Киров
           </span>
         </motion.div>
 

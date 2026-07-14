@@ -93,7 +93,7 @@ export function Contact() {
                   <div className="text-xs text-muted-foreground uppercase tracking-wider">
                     Локация
                   </div>
-                  <div className="text-sm font-medium">Москва и область</div>
+                  <div className="text-sm font-medium">Нижний Новгород и Киров (Вятка)</div>
                 </div>
               </div>
 

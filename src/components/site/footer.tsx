@@ -19,7 +19,7 @@ export function Footer() {
             </a>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
               Фотостудия Елены. Живые портреты, семейные истории и свадебные
-              кадры в Москве и области.
+              кадры в Нижнем Новгороде и Кирове (Вятке).
             </p>
           </div>
 
