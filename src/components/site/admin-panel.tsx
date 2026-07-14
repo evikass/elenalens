@@ -96,6 +96,21 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-60.jpg`, filename: 'work-60.jpg', title: 'С листьями в лесу', cat: 'Осенняя серия' },
   { src: `${basePath}/work-61.jpg`, filename: 'work-61.jpg', title: 'В прыжке на аллее', cat: 'Осенняя серия' },
   { src: `${basePath}/work-62.jpg`, filename: 'work-62.jpg', title: 'На ограждении в парке', cat: 'Осенняя серия' },
+  { src: `${basePath}/work-63.jpg`, filename: 'work-63.jpg', title: 'В коляске с осенними листьями', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-64.jpg`, filename: 'work-64.jpg', title: 'Мама с девочкой на руках', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-65.jpg`, filename: 'work-65.jpg', title: 'С букетом осенних листьев', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-66.jpg`, filename: 'work-66.jpg', title: 'В розовом платье на тропинке', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-67.jpg`, filename: 'work-67.jpg', title: 'Объятие в осеннем лесу', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-68.jpg`, filename: 'work-68.jpg', title: 'Мама с двумя дочерьми', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-69.jpg`, filename: 'work-69.jpg', title: 'Две девочки с яблоками', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-70.jpg`, filename: 'work-70.jpg', title: 'Мама поднимает смеющуюся девочку', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-71.jpg`, filename: 'work-71.jpg', title: 'Малышка в осеннем парке', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-72.jpg`, filename: 'work-72.jpg', title: 'Девушка в летнем поле', cat: 'Портрет' },
+  { src: `${basePath}/work-73.jpg`, filename: 'work-73.jpg', title: 'С корзиной яблок', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-74.jpg`, filename: 'work-74.jpg', title: 'На листьях с яблоками', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-75.jpg`, filename: 'work-75.jpg', title: 'С цветами на осенней тропинке', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-76.jpg`, filename: 'work-76.jpg', title: 'Мама и две дочки с яблоками', cat: 'Осенняя семья' },
+  { src: `${basePath}/work-77.jpg`, filename: 'work-77.jpg', title: 'Улыбающаяся девочка в розовом', cat: 'Осенняя семья' },
 ]
 
 interface AdminOverride {
