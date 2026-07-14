@@ -78,6 +78,15 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-42.jpg`, filename: 'work-42.jpg', title: 'В цветочном платье на закате', cat: 'Выставка' },
   { src: `${basePath}/work-43.jpg`, filename: 'work-43.jpg', title: 'Макро: насекомое на цветке', cat: 'Выставка' },
   { src: `${basePath}/work-44.jpg`, filename: 'work-44.jpg', title: 'Восход над туманным озером', cat: 'Выставка' },
+  { src: `${basePath}/work-45.jpg`, filename: 'work-45.jpg', title: 'С цветком в парке', cat: 'Портрет' },
+  { src: `${basePath}/work-46.jpg`, filename: 'work-46.jpg', title: 'Лодка на закате', cat: 'Выставка' },
+  { src: `${basePath}/work-47.jpg`, filename: 'work-47.jpg', title: 'Поле фиолетовых цветов на рассвете', cat: 'Выставка' },
+  { src: `${basePath}/work-48.jpg`, filename: 'work-48.jpg', title: 'Девочка в цветочном поле', cat: 'Дети' },
+  { src: `${basePath}/work-49.jpg`, filename: 'work-49.jpg', title: 'С цветком в волосах', cat: 'Дети' },
+  { src: `${basePath}/work-50.jpg`, filename: 'work-50.jpg', title: 'Макро: жук на мхе', cat: 'Выставка' },
+  { src: `${basePath}/work-51.jpg`, filename: 'work-51.jpg', title: 'В высокой траве', cat: 'Дети' },
+  { src: `${basePath}/work-52.jpg`, filename: 'work-52.jpg', title: 'С подсолнухами в золотом платье', cat: 'Портрет' },
+  { src: `${basePath}/work-53.jpg`, filename: 'work-53.jpg', title: 'Бежит по мосту в венке', cat: 'Дети' },
 ]
 
 interface AdminOverride {

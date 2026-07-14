@@ -69,6 +69,16 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-42.jpg`, title: 'В цветочном платье на закате', cat: 'Выставка', span: 'tall' },
   { src: `${basePath}/work-43.jpg`, title: 'Макро: насекомое на цветке', cat: 'Выставка' },
   { src: `${basePath}/work-44.jpg`, title: 'Восход над туманным озером', cat: 'Выставка', span: 'wide' },
+  // Новая серия — арт-портреты, дети и природа
+  { src: `${basePath}/work-45.jpg`, title: 'С цветком в парке', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-46.jpg`, title: 'Лодка на закате', cat: 'Выставка', span: 'wide' },
+  { src: `${basePath}/work-47.jpg`, title: 'Поле фиолетовых цветов на рассвете', cat: 'Выставка', span: 'wide' },
+  { src: `${basePath}/work-48.jpg`, title: 'Девочка в цветочном поле', cat: 'Дети', span: 'wide' },
+  { src: `${basePath}/work-49.jpg`, title: 'С цветком в волосах', cat: 'Дети' },
+  { src: `${basePath}/work-50.jpg`, title: 'Макро: жук на мхе', cat: 'Выставка' },
+  { src: `${basePath}/work-51.jpg`, title: 'В высокой траве', cat: 'Дети' },
+  { src: `${basePath}/work-52.jpg`, title: 'С подсолнухами в золотом платье', cat: 'Портрет' },
+  { src: `${basePath}/work-53.jpg`, title: 'Бежит по мосту в венке', cat: 'Дети', span: 'wide' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
