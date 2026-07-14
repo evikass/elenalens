@@ -73,9 +73,11 @@ export function Navbar() {
 
           {/* Mobile toggle */}
           <button
-            className="md:hidden p-2 text-foreground"
+            className="md:hidden p-3 -mr-3 text-foreground active:scale-95 transition-transform"
             onClick={() => setOpen((v) => !v)}
             aria-label="Меню"
+            aria-expanded={open}
+            style={{ touchAction: 'manipulation' }}
           >
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -84,37 +86,60 @@ export function Navbar() {
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="md:hidden overflow-hidden bg-background/95 backdrop-blur-md border-b border-border"
-          >
-            <ul className="px-6 py-4 flex flex-col gap-1">
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <a
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="block py-3 text-base text-muted-foreground hover:text-primary transition-colors"
+          <>
+            {/* Backdrop overlay — tap to close */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setOpen(false)}
+              className="md:hidden fixed inset-0 top-16 sm:top-20 z-40 bg-background/40 backdrop-blur-sm"
+              style={{ touchAction: 'manipulation' }}
+              aria-hidden="true"
+            />
+            {/* Menu panel */}
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              style={{
+                touchAction: 'manipulation',
+                pointerEvents: 'auto',
+              }}
+              className="md:hidden fixed top-16 sm:top-20 inset-x-0 z-50 bg-background/98 backdrop-blur-md border-b border-border shadow-2xl"
+            >
+              <ul className="px-4 py-3 flex flex-col gap-0 max-h-[calc(100vh-5rem)] overflow-y-auto custom-scroll">
+                {navItems.map((item) => (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className="block min-h-[48px] px-4 py-3 text-base text-foreground hover:text-primary hover:bg-secondary/60 rounded-md transition-colors active:bg-secondary"
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+                <li className="pt-3 px-4 pb-2">
+                  <Button
+                    asChild
+                    className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full"
                   >
-                    {item.label}
-                  </a>
+                    <a
+                      href="#contact"
+                      onClick={() => setOpen(false)}
+                      style={{ touchAction: 'manipulation' }}
+                    >
+                      Записаться на съёмку
+                    </a>
+                  </Button>
                 </li>
-              ))}
-              <li className="pt-2">
-                <Button
-                  asChild
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full"
-                >
-                  <a href="#contact" onClick={() => setOpen(false)}>
-                    Записаться на съёмку
-                  </a>
-                </Button>
-              </li>
-            </ul>
-          </motion.div>
+              </ul>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </header>
