@@ -119,6 +119,13 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-83.jpg`, filename: 'work-83.jpg', title: 'На стуле с цветочным мольбертом', cat: 'Дети' },
   { src: `${basePath}/work-84.jpg`, filename: 'work-84.jpg', title: 'Семья у новогодней ёлки', cat: 'Семья' },
   { src: `${basePath}/work-85.jpg`, filename: 'work-85.jpg', title: 'Элегантная уверенность в студии', cat: 'Контент' },
+  { src: `${basePath}/work-86.jpg`, filename: 'work-86.jpg', title: 'На розовом фоне с прозрачными шарами', cat: 'Дети' },
+  { src: `${basePath}/work-87.jpg`, filename: 'work-87.jpg', title: 'Зимняя свадебная прогулка', cat: 'Свадьба' },
+  { src: `${basePath}/work-88.jpg`, filename: 'work-88.jpg', title: 'С цветочной рамой в студии', cat: 'Портрет' },
+  { src: `${basePath}/work-89.jpg`, filename: 'work-89.jpg', title: 'Деловой костюм в гостиной', cat: 'Контент' },
+  { src: `${basePath}/work-90.jpg`, filename: 'work-90.jpg', title: 'Семья с игрушкой у ёлки', cat: 'Семья' },
+  { src: `${basePath}/work-91.jpg`, filename: 'work-91.jpg', title: 'С журналом Vogue на синем стуле', cat: 'Контент' },
+  { src: `${basePath}/work-92.jpg`, filename: 'work-92.jpg', title: 'В шубе у новогодних огней', cat: 'Портрет' },
 ]
 
 interface AdminOverride {

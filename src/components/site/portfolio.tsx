@@ -114,6 +114,14 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-83.jpg`, title: 'На стуле с цветочным мольбертом', cat: 'Дети', span: 'tall' },
   { src: `${basePath}/work-84.jpg`, title: 'Семья у новогодней ёлки', cat: 'Семья', span: 'wide' },
   { src: `${basePath}/work-85.jpg`, title: 'Элегантная уверенность в студии', cat: 'Контент', span: 'tall' },
+  // Студийные детские, зимние съёмки, деловые портреты
+  { src: `${basePath}/work-86.jpg`, title: 'На розовом фоне с прозрачными шарами', cat: 'Дети', span: 'tall' },
+  { src: `${basePath}/work-87.jpg`, title: 'Зимняя свадебная прогулка', cat: 'Свадьба', span: 'wide' },
+  { src: `${basePath}/work-88.jpg`, title: 'С цветочной рамой в студии', cat: 'Портрет', span: 'tall' },
+  { src: `${basePath}/work-89.jpg`, title: 'Деловой костюм в гостиной', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-90.jpg`, title: 'Семья с игрушкой у ёлки', cat: 'Семья', span: 'wide' },
+  { src: `${basePath}/work-91.jpg`, title: 'С журналом Vogue на синем стуле', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-92.jpg`, title: 'В шубе у новогодних огней', cat: 'Портрет', span: 'wide' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
