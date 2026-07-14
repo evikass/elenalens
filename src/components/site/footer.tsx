@@ -1,6 +1,6 @@
 'use client'
 
-import { Camera, Phone, Mail, MessageCircle, Instagram, Send } from 'lucide-react'
+import { Camera, Phone, MessageCircle } from 'lucide-react'
 
 export function Footer() {
   return (
@@ -57,48 +57,20 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="tel:+79000000000"
+                  href="tel:+79097171909"
                   className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
                 >
-                  <Phone className="h-4 w-4" /> +7 (900) 000-00-00
+                  <Phone className="h-4 w-4" /> +7 909 717-19-09
                 </a>
               </li>
               <li>
                 <a
-                  href="mailto:hello@elenalens.ru"
-                  className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Mail className="h-4 w-4" /> hello@elenalens.ru
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://t.me/elenalens"
+                  href="https://vk.ru/elenapentina"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
                 >
-                  <Send className="h-4 w-4" /> Telegram @elenalens
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://instagram.com/elenalens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Instagram className="h-4 w-4" /> Instagram @elenalens.photo
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://vk.com/elenalens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <MessageCircle className="h-4 w-4" /> ВКонтакте / elenalens
+                  <MessageCircle className="h-4 w-4" /> ВКонтакте / elenapentina
                 </a>
               </li>
             </ul>

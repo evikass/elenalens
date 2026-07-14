@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Phone, Mail, MapPin, Instagram, Send, Check, MessageCircle } from 'lucide-react'
+import { Phone, MapPin, Send, Check, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -71,7 +71,7 @@ export function Contact() {
 
             <div className="space-y-4">
               <a
-                href="tel:+79000000000"
+                href="tel:+79097171909"
                 className="flex items-center gap-4 group"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-primary group-hover:border-primary group-hover:bg-primary/10 transition-colors">
@@ -79,24 +79,9 @@ export function Contact() {
                 </span>
                 <div>
                   <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Телефон
+                    Телефон / WhatsApp
                   </div>
-                  <div className="text-sm font-medium">+7 (900) 000-00-00</div>
-                </div>
-              </a>
-
-              <a
-                href="mailto:hello@elenalens.ru"
-                className="flex items-center gap-4 group"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-primary group-hover:border-primary group-hover:bg-primary/10 transition-colors">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Email
-                  </div>
-                  <div className="text-sm font-medium">hello@elenalens.ru</div>
+                  <div className="text-sm font-medium">+7 909 717-19-09</div>
                 </div>
               </a>
 
@@ -113,7 +98,7 @@ export function Contact() {
               </div>
 
               <a
-                href="https://t.me/elenalens"
+                href="https://vk.ru/elenapentina"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-4 group"
@@ -123,26 +108,9 @@ export function Contact() {
                 </span>
                 <div>
                   <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Telegram
+                    ВКонтакте
                   </div>
-                  <div className="text-sm font-medium">@elenalens</div>
-                </div>
-              </a>
-
-              <a
-                href="https://instagram.com/elenalens"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-4 group"
-              >
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border text-primary group-hover:border-primary group-hover:bg-primary/10 transition-colors">
-                  <Instagram className="h-4 w-4" />
-                </span>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Instagram
-                  </div>
-                  <div className="text-sm font-medium">@elenalens.photo</div>
+                  <div className="text-sm font-medium">vk.ru/elenapentina</div>
                 </div>
               </a>
             </div>
@@ -183,7 +151,7 @@ export function Contact() {
                   id="contact"
                   name="contact"
                   required
-                  placeholder="+7 (___) ___-__-__ или @username"
+                  placeholder="+7 (___) ___-__-__ или ссылка на ВК"
                   className="bg-background border-border focus-visible:ring-primary/40"
                 />
               </div>

@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion'
 import { Quote } from 'lucide-react'
+import Image from 'next/image'
+
+const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
 export function About() {
   return (
@@ -21,10 +24,13 @@ export function About() {
           >
             <div className="relative aspect-[4/5] max-w-md mx-auto lg:mx-0">
               <div className="absolute -inset-4 border border-primary/30 rounded-sm" />
-              <img
-                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&q=80"
-                alt="Елена — фотограф ElenaLens"
-                className="relative h-full w-full object-cover rounded-sm grayscale-[20%]"
+              <Image
+                src={`${basePath}/elena-portrait.jpg`}
+                alt="Елена Пентина — фотограф ElenaLens"
+                fill
+                sizes="(max-width: 768px) 100vw, 400px"
+                className="relative h-full w-full object-cover rounded-sm grayscale-[15%]"
+                priority
               />
               <div className="absolute -bottom-6 -right-6 lg:right-auto lg:-left-6 bg-background border border-border p-5 rounded-sm shadow-2xl max-w-[200px]">
                 <div className="font-serif text-3xl text-primary">12+</div>
@@ -56,10 +62,10 @@ export function About() {
 
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                Меня зовут Елена, и уже более двенадцати лет я держу камеру в
-                руках. За это время через мою студию прошли сотни людей —
-                новорождённые, выпускники, невесты, семьи, предприниматели. И
-                каждый раз я заново учусь видеть.
+                Меня зовут Елена Пентина, и уже более двенадцати лет я держу
+                камеру в руках. За это время через мою студию прошли сотни
+                людей — новорождённые, выпускники, невесты, семьи,
+                предприниматели. И каждый раз я заново учусь видеть.
               </p>
               <p>
                 Я не люблю постановочные кадры с натянутыми улыбками. Мне
