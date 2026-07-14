@@ -126,6 +126,14 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-90.jpg`, filename: 'work-90.jpg', title: 'Семья с игрушкой у ёлки', cat: 'Семья' },
   { src: `${basePath}/work-91.jpg`, filename: 'work-91.jpg', title: 'С журналом Vogue на синем стуле', cat: 'Контент' },
   { src: `${basePath}/work-92.jpg`, filename: 'work-92.jpg', title: 'В шубе у новогодних огней', cat: 'Портрет' },
+  { src: `${basePath}/work-93.jpg`, filename: 'work-93.jpg', title: 'На сером кресле в интерьере', cat: 'Контент' },
+  { src: `${basePath}/work-94.jpg`, filename: 'work-94.jpg', title: 'С цветами и картиной', cat: 'Дети' },
+  { src: `${basePath}/work-95.jpg`, filename: 'work-95.jpg', title: 'В розовом топе с шарами', cat: 'Контент' },
+  { src: `${basePath}/work-96.jpg`, filename: 'work-96.jpg', title: 'На розовом фоне в студии', cat: 'Дети' },
+  { src: `${basePath}/work-97.jpg`, filename: 'work-97.jpg', title: 'Чёрный костюм с змеиным принтом', cat: 'Контент' },
+  { src: `${basePath}/work-98.jpg`, filename: 'work-98.jpg', title: 'Зимняя уютная композиция', cat: 'Выставка' },
+  { src: `${basePath}/work-99.jpg`, filename: 'work-99.jpg', title: 'В голубом платье на диване', cat: 'Дети' },
+  { src: `${basePath}/work-100.jpg`, filename: 'work-100.jpg', title: 'Строгий костюм на голубом кресле', cat: 'Контент' },
 ]
 
 interface AdminOverride {

@@ -122,6 +122,15 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-90.jpg`, title: 'Семья с игрушкой у ёлки', cat: 'Семья', span: 'wide' },
   { src: `${basePath}/work-91.jpg`, title: 'С журналом Vogue на синем стуле', cat: 'Контент', span: 'tall' },
   { src: `${basePath}/work-92.jpg`, title: 'В шубе у новогодних огней', cat: 'Портрет', span: 'wide' },
+  // Деловые портреты, студийные детские, зимняя композиция
+  { src: `${basePath}/work-93.jpg`, title: 'На сером кресле в интерьере', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-94.jpg`, title: 'С цветами и картиной', cat: 'Дети', span: 'tall' },
+  { src: `${basePath}/work-95.jpg`, title: 'В розовом топе с шарами', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-96.jpg`, title: 'На розовом фоне в студии', cat: 'Дети', span: 'tall' },
+  { src: `${basePath}/work-97.jpg`, title: 'Чёрный костюм с змеиным принтом', cat: 'Контент', span: 'tall' },
+  { src: `${basePath}/work-98.jpg`, title: 'Зимняя уютная композиция', cat: 'Выставка', span: 'wide' },
+  { src: `${basePath}/work-99.jpg`, title: 'В голубом платье на диване', cat: 'Дети', span: 'tall' },
+  { src: `${basePath}/work-100.jpg`, title: 'Строгий костюм на голубом кресле', cat: 'Контент', span: 'tall' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
