@@ -70,6 +70,14 @@ const defaultShots: ShotMeta[] = [
   { src: `${basePath}/work-34.jpg`, filename: 'work-34.jpg', title: 'Сердечко в зеркале', cat: 'Портрет' },
   { src: `${basePath}/work-35.jpg`, filename: 'work-35.jpg', title: 'Команда tsamkirov.ru', cat: 'Контент' },
   { src: `${basePath}/work-36.jpg`, filename: 'work-36.jpg', title: 'Деловой портрет на диване', cat: 'Контент' },
+  { src: `${basePath}/work-37.jpg`, filename: 'work-37.jpg', title: 'Мальчик с цветком', cat: 'Дети' },
+  { src: `${basePath}/work-38.jpg`, filename: 'work-38.jpg', title: 'Девушка в осеннем лесу', cat: 'Выставка' },
+  { src: `${basePath}/work-39.jpg`, filename: 'work-39.jpg', title: 'С оранжевым цветком у озера', cat: 'Выставка' },
+  { src: `${basePath}/work-40.jpg`, filename: 'work-40.jpg', title: 'На фоне сухих цветов', cat: 'Портрет' },
+  { src: `${basePath}/work-41.jpg`, filename: 'work-41.jpg', title: 'Туманное утро над рекой', cat: 'Выставка' },
+  { src: `${basePath}/work-42.jpg`, filename: 'work-42.jpg', title: 'В цветочном платье на закате', cat: 'Выставка' },
+  { src: `${basePath}/work-43.jpg`, filename: 'work-43.jpg', title: 'Макро: насекомое на цветке', cat: 'Выставка' },
+  { src: `${basePath}/work-44.jpg`, filename: 'work-44.jpg', title: 'Восход над туманным озером', cat: 'Выставка' },
 ]
 
 interface AdminOverride {

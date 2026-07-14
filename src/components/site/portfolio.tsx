@@ -6,7 +6,7 @@ import { Camera, X, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 
 const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
-const categories = ['Все', 'Портрет', 'Семья', 'Свадьба', 'Дети', 'Контент'] as const
+const categories = ['Все', 'Портрет', 'Семья', 'Свадьба', 'Дети', 'Контент', 'Выставка'] as const
 
 type Cat = (typeof categories)[number]
 
@@ -60,6 +60,15 @@ const defaultShots: Shot[] = [
   { src: `${basePath}/work-31.jpg`, title: 'У фиолетовой двери', cat: 'Портрет' },
   { src: `${basePath}/work-33.jpg`, title: 'У цветущего куста', cat: 'Портрет', span: 'tall' },
   { src: `${basePath}/work-34.jpg`, title: 'Сердечко в зеркале', cat: 'Портрет', span: 'wide' },
+  // Выставка — арт-съёмка из альбома «На выставку»
+  { src: `${basePath}/work-37.jpg`, title: 'Мальчик с цветком', cat: 'Дети' },
+  { src: `${basePath}/work-38.jpg`, title: 'Девушка в осеннем лесу', cat: 'Выставка', span: 'wide' },
+  { src: `${basePath}/work-39.jpg`, title: 'С оранжевым цветком у озера', cat: 'Выставка' },
+  { src: `${basePath}/work-40.jpg`, title: 'На фоне сухих цветов', cat: 'Портрет', span: 'wide' },
+  { src: `${basePath}/work-41.jpg`, title: 'Туманное утро над рекой', cat: 'Выставка', span: 'wide' },
+  { src: `${basePath}/work-42.jpg`, title: 'В цветочном платье на закате', cat: 'Выставка', span: 'tall' },
+  { src: `${basePath}/work-43.jpg`, title: 'Макро: насекомое на цветке', cat: 'Выставка' },
+  { src: `${basePath}/work-44.jpg`, title: 'Восход над туманным озером', cat: 'Выставка', span: 'wide' },
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
