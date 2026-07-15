@@ -134,28 +134,74 @@ const defaultShots: Shot[] = [
 ]
 
 // Allow admin to override order / titles / visibility via localStorage
+interface PhotoAdjustments {
+  watercolor: number
+  shadows: number
+  exposure: number
+  warmth: number
+  contrast: number
+}
+
 interface AdminOverride {
   order: string[] // array of src filenames in desired order
   hidden: string[] // src filenames to hide
   watercolor: string[] // src filenames to apply watercolor filter
   titles: Record<string, string> // custom titles
+  adjustments: Record<string, PhotoAdjustments> // per-photo filter settings
+}
+
+// Build CSS filter string from adjustments (must match photo-editor.tsx logic)
+function buildFilterString(a: PhotoAdjustments): string {
+  const wc = a.watercolor / 100
+  const shadows = a.shadows / 100
+  const exposure = a.exposure / 100
+  const warmth = a.warmth / 100
+  const contrast = a.contrast / 100
+
+  const blur = wc * 1.6
+  const sat = 1 + wc * 0.45
+  const wcContrast = 1 - wc * 0.12
+  const wcBrightness = 1 + wc * 0.06
+  const shBrightness = 1 + shadows * 0.18
+  const shContrast = 1 - shadows * 0.12
+  const expBrightness = 1 + exposure * 0.35
+  const sepia = warmth > 0 ? warmth * 0.35 : 0
+  const hueRotate = warmth * 12
+  const sat2 = 1 + Math.abs(warmth) * 0.15
+  const userContrast = 1 + contrast * 0.4
+
+  return [
+    `blur(${blur.toFixed(2)}px)`,
+    `saturate(${(sat * sat2).toFixed(2)})`,
+    `contrast(${(wcContrast * shContrast * userContrast).toFixed(2)})`,
+    `brightness(${(wcBrightness * shBrightness * expBrightness).toFixed(2)})`,
+    `sepia(${sepia.toFixed(2)})`,
+    `hue-rotate(${hueRotate.toFixed(1)}deg)`,
+  ].join(' ')
 }
 
 function loadAdminOverride(): AdminOverride {
-  if (typeof window === 'undefined')
-    return { order: [], hidden: [], watercolor: [], titles: {} }
+  const empty: AdminOverride = {
+    order: [],
+    hidden: [],
+    watercolor: [],
+    titles: {},
+    adjustments: {},
+  }
+  if (typeof window === 'undefined') return empty
   try {
     const raw = localStorage.getItem('elenalens-admin')
-    if (!raw) return { order: [], hidden: [], watercolor: [], titles: {} }
+    if (!raw) return empty
     const parsed = JSON.parse(raw)
     return {
       order: parsed.order || [],
       hidden: parsed.hidden || [],
       watercolor: parsed.watercolor || [],
       titles: parsed.titles || {},
+      adjustments: parsed.adjustments || {},
     }
   } catch {
-    return { order: [], hidden: [], watercolor: [], titles: {} }
+    return empty
   }
 }
 
@@ -171,6 +217,7 @@ export function Portfolio() {
     hidden: [],
     watercolor: [],
     titles: {},
+    adjustments: {},
   })
 
   // Load admin override from localStorage (so changes made in /admin reflect here)
@@ -305,9 +352,15 @@ export function Portfolio() {
         >
           <AnimatePresence mode="popLayout">
             {filtered.map((shot, idx) => {
-              const isWatercolor = override.watercolor.includes(
-                filenameFromSrc(shot.src)
+              const filename = filenameFromSrc(shot.src)
+              const adj = override.adjustments[filename]
+              const hasAdj = !!adj && (
+                adj.watercolor > 0 || adj.shadows > 0 ||
+                adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0
               )
+              const filterStyle = hasAdj && adj
+                ? { filter: buildFilterString(adj) }
+                : undefined
               return (
                 <motion.button
                   key={shot.src}
@@ -329,14 +382,13 @@ export function Portfolio() {
                     src={shot.src}
                     alt={shot.title}
                     loading="lazy"
-                    className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${
-                      isWatercolor ? 'watercolor-filter' : ''
-                    }`}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    style={filterStyle}
                   />
                   {/* Watercolor badge */}
-                  {isWatercolor && (
+                  {hasAdj && adj && adj.watercolor > 0 && (
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] uppercase tracking-wider text-primary">
-                      Акварель
+                      Акварель {adj.watercolor}%
                     </span>
                   )}
                   {/* Overlay */}
@@ -414,20 +466,25 @@ export function Portfolio() {
               onClick={(e) => e.stopPropagation()}
               className="relative max-w-[92vw] max-h-[88vh] flex flex-col items-center"
             >
-              <img
-                src={filtered[lightboxIndex].src.replace(
-                  /\/work-/,
-                  '/work-'
-                )}
-                alt={filtered[lightboxIndex].title}
-                className={`max-w-full max-h-[78vh] object-contain rounded-sm shadow-2xl ${
-                  override.watercolor.includes(
-                    filenameFromSrc(filtered[lightboxIndex].src)
-                  )
-                    ? 'watercolor-filter'
-                    : ''
-                }`}
-              />
+              {(() => {
+                const currentShot = filtered[lightboxIndex]
+                const currentFilename = filenameFromSrc(currentShot.src)
+                const currentAdj = override.adjustments[currentFilename]
+                const currentHasAdj = !!currentAdj && (
+                  currentAdj.watercolor > 0 || currentAdj.shadows > 0 ||
+                  currentAdj.exposure !== 0 || currentAdj.warmth !== 0 || currentAdj.contrast !== 0
+                )
+                return (
+                  <img
+                    src={currentShot.src}
+                    alt={currentShot.title}
+                    className="max-w-full max-h-[78vh] object-contain rounded-sm shadow-2xl"
+                    style={currentHasAdj && currentAdj
+                      ? { filter: buildFilterString(currentAdj) }
+                      : undefined}
+                  />
+                )
+              })()}
               <figcaption className="mt-4 flex items-center gap-2 text-center">
                 <Info className="h-4 w-4 text-primary" />
                 <span className="text-xs uppercase tracking-wider text-primary">

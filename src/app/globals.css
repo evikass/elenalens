@@ -218,4 +218,42 @@
       radial-gradient(circle at 70% 70%, oklch(0.70 0.10 50 / 0.06), transparent 50%);
     pointer-events: none;
   }
+
+  /* Range sliders — premium styling */
+  input[type="range"].wc-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: oklch(0.30 0.014 60);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"].wc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: oklch(0.82 0.13 75);
+    border: 2px solid oklch(0.16 0.012 60);
+    cursor: grab;
+    transition: transform 0.15s ease;
+  }
+  input[type="range"].wc-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+  input[type="range"].wc-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.05);
+  }
+  input[type="range"].wc-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: oklch(0.82 0.13 75);
+    border: 2px solid oklch(0.16 0.012 60);
+    cursor: grab;
+  }
 }

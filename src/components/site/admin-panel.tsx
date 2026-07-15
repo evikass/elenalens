@@ -14,11 +14,18 @@ import {
   Save,
   Settings,
   Phone,
+  Sliders,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import {
+  PhotoEditor,
+  defaultAdjustments,
+  buildFilterString,
+  type PhotoAdjustments,
+} from './photo-editor'
 
 // Admin password — change here if needed
 const ADMIN_PASSWORD = 'Elena'
@@ -141,6 +148,7 @@ interface AdminOverride {
   hidden: string[]
   watercolor: string[]
   titles: Record<string, string>
+  adjustments: Record<string, PhotoAdjustments> // per-photo adjustment settings
 }
 
 const defaultOverride: AdminOverride = {
@@ -148,6 +156,7 @@ const defaultOverride: AdminOverride = {
   hidden: [],
   watercolor: [],
   titles: {},
+  adjustments: {},
 }
 
 function loadOverride(): AdminOverride {
@@ -161,6 +170,7 @@ function loadOverride(): AdminOverride {
       hidden: parsed.hidden || [],
       watercolor: parsed.watercolor || [],
       titles: parsed.titles || {},
+      adjustments: parsed.adjustments || {},
     }
   } catch {
     return defaultOverride
@@ -187,6 +197,18 @@ export function AdminPanel() {
   const [showPassword, setShowPassword] = useState(false)
   // Lazy init from localStorage so admin sees their saved settings immediately
   const [override, setOverride] = useState<AdminOverride>(() => loadOverride())
+  // Photo editor state
+  const [editorFilename, setEditorFilename] = useState<string | null>(null)
+  const editorShot = editorFilename
+    ? defaultShots.find((s) => s.filename === editorFilename)
+    : null
+  const editorInitial = editorFilename
+    ? override.adjustments[editorFilename] || {
+        ...defaultAdjustments,
+        // If photo was marked as watercolor via old toggle, pre-set strength to 70%
+        watercolor: override.watercolor.includes(editorFilename) ? 70 : 0,
+      }
+    : defaultAdjustments
   const { toast } = useToast()
   const clickCountRef = useRef(0)
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -276,13 +298,38 @@ export function AdminPanel() {
   }
 
   const toggleWatercolor = (filename: string) => {
-    const watercolor = override.watercolor.includes(filename)
-      ? override.watercolor.filter((f) => f !== filename)
-      : [...override.watercolor, filename]
-    persist({ ...override, watercolor })
+    // Legacy quick-toggle: opens editor with watercolor pre-set to 70%
+    const existing = override.adjustments[filename]
+    if (existing && existing.watercolor > 0) {
+      // If has adjustments with watercolor, clear them
+      const adjustments = { ...override.adjustments }
+      delete adjustments[filename]
+      const watercolor = override.watercolor.filter((f) => f !== filename)
+      persist({ ...override, adjustments, watercolor })
+      toast({ title: 'Акварель выключена' })
+    } else {
+      // Open editor for fine-tuning
+      setEditorFilename(filename)
+    }
+  }
+
+  const applyAdjustments = (filename: string, a: PhotoAdjustments) => {
+    const adjustments = { ...override.adjustments, [filename]: a }
+    // Sync legacy watercolor flag (for backwards compat with portfolio.tsx)
+    const watercolor = a.watercolor > 0
+      ? [...override.watercolor.filter((f) => f !== filename), filename]
+      : override.watercolor.filter((f) => f !== filename)
+    persist({ ...override, adjustments, watercolor })
+    setEditorFilename(null)
     toast({
-      title: watercolor ? 'Акварель выключена' : 'Акварельный фильтр включён 🎨',
+      title: a.watercolor > 0
+        ? `Фильтр применён (акварель ${a.watercolor}%) 🎨`
+        : 'Настройки сохранены',
     })
+  }
+
+  const openEditor = (filename: string) => {
+    setEditorFilename(filename)
   }
 
   const updateTitle = (filename: string, title: string) => {
@@ -432,7 +479,8 @@ export function AdminPanel() {
                 <div className="p-4 mb-6 rounded-sm border border-primary/30 bg-primary/5 text-sm text-muted-foreground leading-relaxed">
                   <strong className="text-foreground">Как пользоваться:</strong>{' '}
                   перетаскивайте карточки за иконку <GripVertical className="inline h-3 w-3" />, чтобы менять порядок на сайте.
-                  Нажмите <Sparkles className="inline h-3 w-3 text-primary" /> «Акварель», чтобы применить мягкий живописный эффект.
+                  Нажмите <Sliders className="inline h-3 w-3 text-primary" /> «Редактор», чтобы открыть фоторедактор с ползунками: акварель, тени, экспозиция, теплота, контраст — с превью оригинала рядом для сравнения.
+                  Нажмите <Sparkles className="inline h-3 w-3 text-primary" /> для быстрой акварели.
                   Нажмите <EyeOff className="inline h-3 w-3" />, чтобы скрыть фото с сайта (не удаляется).
                   Изменения видны только на этом устройстве.
                 </div>
@@ -462,6 +510,8 @@ export function AdminPanel() {
                   {items.map((item) => {
                     const isHidden = override.hidden.includes(item.filename)
                     const isWc = override.watercolor.includes(item.filename)
+                    const adj = override.adjustments[item.filename]
+                    const hasAdj = !!adj && (adj.watercolor > 0 || adj.shadows > 0 || adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0)
                     const customTitle =
                       override.titles[item.filename] ?? item.title
                     return (
@@ -476,20 +526,32 @@ export function AdminPanel() {
                         </div>
 
                         {/* Thumbnail */}
-                        <div className="relative h-16 w-20 sm:w-24 shrink-0 overflow-hidden rounded-sm bg-secondary">
+                        <button
+                          onClick={() => openEditor(item.filename)}
+                          className="relative h-16 w-20 sm:w-24 shrink-0 overflow-hidden rounded-sm bg-secondary group cursor-pointer"
+                          title="Открыть редактор фото"
+                        >
                           <img
                             src={item.src}
                             alt={item.title}
-                            className={`h-full w-full object-cover ${
-                              isWc ? 'watercolor-filter' : ''
-                            } ${isHidden ? 'opacity-30' : ''}`}
+                            className={`h-full w-full object-cover transition-transform group-hover:scale-105 ${
+                              isHidden ? 'opacity-30' : ''
+                            }`}
+                            style={hasAdj && adj ? {
+                              filter: buildFilterString(adj),
+                            } : undefined}
                           />
                           {isWc && (
                             <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full">
-                              Акварель
+                              {adj?.watercolor ? `${adj.watercolor}%` : 'Акварель'}
                             </span>
                           )}
-                        </div>
+                          {hasAdj && (
+                            <span className="absolute bottom-1 right-1 p-1 rounded-full bg-background/80 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Sliders className="h-3 w-3" />
+                            </span>
+                          )}
+                        </button>
 
                         {/* Title + cat */}
                         <div className="flex-1 min-w-0">
@@ -507,14 +569,30 @@ export function AdminPanel() {
                             <span className="text-[10px] text-muted-foreground">
                               · {item.filename}
                             </span>
+                            {hasAdj && (
+                              <span className="text-[10px] text-primary/70 flex items-center gap-0.5">
+                                · <Sliders className="h-2.5 w-2.5" /> фильтр
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 shrink-0">
                           <button
+                            onClick={() => openEditor(item.filename)}
+                            title="Редактировать фото (фильтры)"
+                            className={`p-2 rounded-sm transition-colors ${
+                              hasAdj
+                                ? 'bg-primary/20 text-primary'
+                                : 'text-muted-foreground hover:text-primary hover:bg-secondary'
+                            }`}
+                          >
+                            <Sliders className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => toggleWatercolor(item.filename)}
-                            title="Акварельный фильтр"
+                            title="Быстрая акварель"
                             className={`p-2 rounded-sm transition-colors ${
                               isWc
                                 ? 'bg-primary/20 text-primary'
@@ -579,6 +657,19 @@ export function AdminPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Photo Editor modal — opened from list */}
+      {editorShot && (
+        <PhotoEditor
+          key={editorShot.filename}
+          open={!!editorFilename}
+          src={editorShot.src}
+          filename={editorShot.filename}
+          initial={editorInitial}
+          onClose={() => setEditorFilename(null)}
+          onApply={(a) => applyAdjustments(editorShot.filename, a)}
+        />
+      )}
     </>
   )
 }
