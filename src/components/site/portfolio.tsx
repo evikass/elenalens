@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, ChevronLeft, ChevronRight, Info } from 'lucide-react'
+import { getWatercolorFilterId } from './watercolor-filters'
 
 const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
@@ -150,7 +151,10 @@ interface AdminOverride {
   adjustments: Record<string, PhotoAdjustments> // per-photo filter settings
 }
 
-// Build CSS filter string from adjustments (must match photo-editor.tsx logic)
+// Build CSS filter string from adjustments (must match photo-editor.tsx logic).
+// IMPORTANT: NO CSS blur — it kills edges and makes photo look smeary, not watercolor.
+// Real watercolor texture comes from SVG filter (url(#watercolor-light/medium/strong))
+// rendered once via <WatercolorFilters /> in page.tsx.
 function buildFilterString(a: PhotoAdjustments): string {
   const wc = a.watercolor / 100
   const shadows = a.shadows / 100
@@ -158,26 +162,35 @@ function buildFilterString(a: PhotoAdjustments): string {
   const warmth = a.warmth / 100
   const contrast = a.contrast / 100
 
-  const blur = wc * 1.6
-  const sat = 1 + wc * 0.45
-  const wcContrast = 1 - wc * 0.12
-  const wcBrightness = 1 + wc * 0.06
+  // Watercolor: NO blur. SVG filter does the real work (paint bleeding,
+  // paper grain, white unpainted spots). CSS only fine-tunes saturation/brightness.
+  const wcSaturate = 1 + wc * 0.20
+  const wcBrightness = 1 + wc * 0.04
+  const wcContrast = 1 - wc * 0.05
+
   const shBrightness = 1 + shadows * 0.18
   const shContrast = 1 - shadows * 0.12
   const expBrightness = 1 + exposure * 0.35
   const sepia = warmth > 0 ? warmth * 0.35 : 0
   const hueRotate = warmth * 12
-  const sat2 = 1 + Math.abs(warmth) * 0.15
+  const warmthSat = 1 + Math.abs(warmth) * 0.15
   const userContrast = 1 + contrast * 0.4
 
-  return [
-    `blur(${blur.toFixed(2)}px)`,
-    `saturate(${(sat * sat2).toFixed(2)})`,
+  const parts: string[] = [
+    `saturate(${(wcSaturate * warmthSat).toFixed(2)})`,
     `contrast(${(wcContrast * shContrast * userContrast).toFixed(2)})`,
     `brightness(${(wcBrightness * shBrightness * expBrightness).toFixed(2)})`,
     `sepia(${sepia.toFixed(2)})`,
     `hue-rotate(${hueRotate.toFixed(1)}deg)`,
-  ].join(' ')
+  ]
+
+  // Apply SVG watercolor filter if watercolor > 0
+  const svgId = getWatercolorFilterId(a.watercolor)
+  if (svgId) {
+    parts.push(`url(#${svgId})`)
+  }
+
+  return parts.join(' ')
 }
 
 function loadAdminOverride(): AdminOverride {

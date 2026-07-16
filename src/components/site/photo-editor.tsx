@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RotateCcw, Sparkles, Check, Sun, Contrast, Moon, Thermometer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getWatercolorFilterId } from './watercolor-filters'
 
 export interface PhotoAdjustments {
   watercolor: number      // 0..100 — сила акварели
@@ -30,7 +31,11 @@ interface PhotoEditorProps {
   onApply: (a: PhotoAdjustments) => void
 }
 
-// Build CSS filter string from adjustments
+// Build CSS filter string from adjustments.
+// IMPORTANT: We do NOT use CSS blur for watercolor — it kills edges.
+// Real watercolor texture (paint bleeding, paper grain, white spots)
+// is done via SVG filter referenced by url(#watercolor-X).
+// CSS only handles: saturation, brightness, contrast, sepia, hue-rotate.
 export function buildFilterString(a: PhotoAdjustments): string {
   const wc = a.watercolor / 100         // 0..1
   const shadows = a.shadows / 100       // 0..1
@@ -38,36 +43,43 @@ export function buildFilterString(a: PhotoAdjustments): string {
   const warmth = a.warmth / 100         // -1..1
   const contrast = a.contrast / 100     // -1..1
 
-  // Watercolor: blur + saturate boost + contrast reduction + brightness lift
-  const blur = wc * 1.6                 // up to 1.6px
-  const sat = 1 + wc * 0.45             // up to 1.45
-  const wcContrast = 1 - wc * 0.12      // down to 0.88
-  const wcBrightness = 1 + wc * 0.06    // up to 1.06
+  // Watercolor: NO blur. Slight saturation boost + brightness lift.
+  // The SVG filter (url(#watercolor-X)) does the real watercolor work:
+  //   - paint bleeding (feDisplacementMap with high scale)
+  //   - paper grain (feTurbulence + multiply blend)
+  //   - white unpainted spots (feComposite)
+  const wcSaturate = 1 + wc * 0.20      // up to 1.20
+  const wcBrightness = 1 + wc * 0.04    // up to 1.04
+  const wcContrast = 1 - wc * 0.05      // down to 0.95
 
-  // Shadows lift: increase brightness slightly + reduce contrast
+  // Shadows lift: brighten + reduce contrast for shadow detail
   const shBrightness = 1 + shadows * 0.18
   const shContrast = 1 - shadows * 0.12
 
   // Exposure: linear brightness shift
   const expBrightness = 1 + exposure * 0.35
 
-  // Warmth: positive = warm (sepia + slight hue-rotate to reds), negative = cool (hue-rotate to blues)
+  // Warmth: positive = warm (sepia + red hue), negative = cool (blue hue)
   const sepia = warmth > 0 ? warmth * 0.35 : 0
-  const hueRotate = warmth * 12 // -12deg..+12deg
-  const sat2 = 1 + Math.abs(warmth) * 0.15
+  const hueRotate = warmth * 12
+  const warmthSat = 1 + Math.abs(warmth) * 0.15
 
-  // Contrast: user-controlled
+  // User contrast
   const userContrast = 1 + contrast * 0.4
 
-  // Combine all
-  const filterParts = [
-    `blur(${blur.toFixed(2)}px)`,
-    `saturate(${(sat * sat2).toFixed(2)})`,
+  const filterParts: string[] = [
+    `saturate(${(wcSaturate * warmthSat).toFixed(2)})`,
     `contrast(${(wcContrast * shContrast * userContrast).toFixed(2)})`,
     `brightness(${(wcBrightness * shBrightness * expBrightness).toFixed(2)})`,
     `sepia(${sepia.toFixed(2)})`,
     `hue-rotate(${hueRotate.toFixed(1)}deg)`,
   ]
+
+  // Apply SVG watercolor filter if watercolor > 0
+  const svgId = getWatercolorFilterId(a.watercolor)
+  if (svgId) {
+    filterParts.push(`url(#${svgId})`)
+  }
 
   return filterParts.join(' ')
 }
@@ -127,8 +139,9 @@ export function PhotoEditor({
   const filter = useMemo(() => buildFilterString(adj), [adj])
 
   // Apply SVG watercolor filter only if watercolor > 0
-  const useSvgFilter = adj.watercolor > 0
-  const svgFilterId = `watercolor-svg-${filename.replace(/[^a-zA-Z0-9]/g, '')}`
+  // SVG watercolor filter id (light/medium/strong based on watercolor strength)
+  // The SVG filter definitions live in <WatercolorFilters /> which is rendered once in page.tsx
+  const svgFilterId = getWatercolorFilterId(adj.watercolor)
 
   const update = (key: keyof PhotoAdjustments) => (v: number) => {
     setAdj((prev) => ({ ...prev, [key]: v }))
@@ -209,9 +222,7 @@ export function PhotoEditor({
                       src={src}
                       alt="С фильтром"
                       className="h-full w-full object-cover"
-                      style={{
-                        filter: useSvgFilter ? `${filter} url(#${svgFilterId})` : filter,
-                      }}
+                      style={{ filter }}
                     />
                   </div>
                 </div>
@@ -242,7 +253,7 @@ export function PhotoEditor({
                       src={src}
                       alt="Сравнение"
                       className="h-full w-full object-cover"
-                      style={{ filter: useSvgFilter ? `${filter} url(#${svgFilterId})` : filter }}
+                      style={{ filter }}
                     />
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 text-[10px] uppercase tracking-wider text-primary">
                       Текущий фильтр
@@ -332,28 +343,9 @@ export function PhotoEditor({
             </div>
           </div>
 
-          {/* Hidden SVG filter for watercolor texture */}
-          <svg className="absolute w-0 h-0" aria-hidden="true">
-            <defs>
-              <filter id={svgFilterId}>
-                {/* Subtle paper grain */}
-                <feTurbulence
-                  type="fractalNoise"
-                  baseFrequency="0.015 0.015"
-                  numOctaves="2"
-                  seed="3"
-                  result="noise"
-                />
-                <feDisplacementMap
-                  in="SourceGraphic"
-                  in2="noise"
-                  scale="6"
-                  xChannelSelector="R"
-                  yChannelSelector="G"
-                />
-              </filter>
-            </defs>
-          </svg>
+          {/* SVG watercolor filter definitions are rendered once globally
+              via <WatercolorFilters /> in page.tsx, so they're available
+              in both the editor preview and the public portfolio gallery. */}
         </motion.div>
       )}
     </AnimatePresence>
