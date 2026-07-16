@@ -5,18 +5,28 @@
  *
  * Real watercolor has:
  *  1. PAINT BLEEDING — colors spread at edges (feDisplacementMap with high scale)
- *  2. PAPER GRAIN — visible texture from paper (feTurbulence high freq + multiply blend)
- *  3. WHITE UNPAINTED EDGES — paper showing through at photo BORDERS
- *     (not random spots in the middle — that looks like smoke/fog)
+ *  2. PAPER GRAIN — subtle overall texture (feTurbulence + multiply, low opacity)
+ *  3. WHITE UNPAINTED EDGES — paper showing through ONLY at photo BORDERS
+ *     (NOT in the middle — previous version had 'web-like' haze across photo)
  *  4. SATURATION BOOST — pigments are more saturated than photo
  *  5. SHARP EDGES — NOT overall blur (blur kills watercolor look)
  *
- * KEY FIX: white unpainted spots are masked to EDGES only via radial gradient.
- * Center stays clean, edges get paper texture + white bleed.
+ * KEY FIX: edge mask now has HARD transition — 0-80% radius fully transparent,
+ * only 80-100% (outer ~15-20% of photo) gets white unpainted spots.
+ * Center stays 100% clean.
  *
  * Usage: <img style={{ filter: 'url(#watercolor-medium) saturate(1.3)' }} />
  */
 export function WatercolorFilters() {
+  // Inline SVG strings for edge masks — sharp transition, only outer rim.
+  // 0-78% radius: black (transparent), 78-100%: white (opaque)
+  // This confines white spots to outer ~15-20% of the photo.
+  const edgeMaskLight = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='78%25' stop-color='black' stop-opacity='0'/><stop offset='82%25' stop-color='white' stop-opacity='0.5'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+
+  const edgeMaskMedium = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='52%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='76%25' stop-color='black' stop-opacity='0'/><stop offset='80%25' stop-color='white' stop-opacity='0.6'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+
+  const edgeMaskStrong = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='55%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='73%25' stop-color='black' stop-opacity='0'/><stop offset='78%25' stop-color='white' stop-opacity='0.75'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+
   return (
     <svg
       className="absolute w-0 h-0 pointer-events-none"
@@ -26,8 +36,7 @@ export function WatercolorFilters() {
       <defs>
         {/* ============================================================
             LIGHT watercolor — for 1-33% strength
-            White spots masked to edges via feImage with inline SVG
-            radial gradient (transparent center, opaque edges).
+            White spots confined to outer ~20% rim via hard radial mask.
             ============================================================ */}
         <filter id="watercolor-light" x="-5%" y="-5%" width="110%" height="110%">
           {/* Paint bleeding — displacement with low freq noise */}
@@ -56,7 +65,7 @@ export function WatercolorFilters() {
             result="saturated"
           />
 
-          {/* Paper grain texture (overall, low opacity) */}
+          {/* Paper grain texture (overall, very low opacity) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.65"
@@ -71,7 +80,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 0.93
                     0 0 0 0 0.89
                     0 0 0 0 0.82
-                    0 0 0 0.10 0"
+                    0 0 0 0.06 0"
             result="paperTextureLight"
           />
           <feBlend
@@ -81,21 +90,22 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* Edge-only white spots — masked via radial gradient image */}
+          {/* EDGE-ONLY white spots — large sparse blobs, masked to rim */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.04"
+            baseFrequency="0.018"
             numOctaves="2"
             seed="11"
             result="edgeNoise"
           />
+          {/* Higher threshold = fewer, larger spots (less web-like) */}
           <feColorMatrix
             in="edgeNoise"
             type="matrix"
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.6 -0.30"
+                    0 0 0 0.55 -0.42"
             result="whiteSpotsRaw"
           />
           <feComposite
@@ -104,8 +114,8 @@ export function WatercolorFilters() {
             operator="in"
             result="whiteSpotsBounded"
           />
-          {/* Apply radial edge mask — light version */}
-          <feImage href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='55%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='55%25' stop-color='black' stop-opacity='0'/><stop offset='80%25' stop-color='white' stop-opacity='0.4'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>" result="edgeMask" preserveAspectRatio="none" />
+          {/* Hard radial edge mask — center 0-78% transparent, only rim opaque */}
+          <feImage href={edgeMaskLight} result="edgeMask" preserveAspectRatio="none" />
           <feComposite
             in="whiteSpotsBounded"
             in2="edgeMask"
@@ -175,7 +185,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 0.92
                     0 0 0 0 0.87
                     0 0 0 0 0.80
-                    0 0 0 0.16 0"
+                    0 0 0 0.10 0"
             result="paperTextureMed"
           />
           <feBlend
@@ -185,10 +195,10 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* Edge-only white spots — more visible than light */}
+          {/* Edge-only white spots — larger blobs, harder threshold */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.035"
+            baseFrequency="0.015"
             numOctaves="2"
             seed="11"
             result="edgeNoise"
@@ -199,19 +209,16 @@ export function WatercolorFilters() {
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.7 -0.32"
+                    0 0 0 0.65 -0.45"
             result="whiteSpotsRaw"
           />
-          {/* Composite white spots within photo bounds */}
           <feComposite
             in="whiteSpotsRaw"
             in2="SourceAlpha"
             operator="in"
             result="whiteSpotsBounded"
           />
-          {/* Apply radial edge mask — multiply white spots by mask opacity
-              (transparent in center, opaque at edges) */}
-          <feImage href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='60%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='50%25' stop-color='black' stop-opacity='0'/><stop offset='78%25' stop-color='white' stop-opacity='0.55'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>" result="edgeMask" preserveAspectRatio="none" />
+          <feImage href={edgeMaskMedium} result="edgeMask" preserveAspectRatio="none" />
           <feComposite
             in="whiteSpotsBounded"
             in2="edgeMask"
@@ -222,7 +229,6 @@ export function WatercolorFilters() {
             k4="0"
             result="whiteSpotsEdgeOnly"
           />
-          {/* Overlay edge-only white spots */}
           <feComposite
             in="whiteSpotsEdgeOnly"
             in2="withPaper"
@@ -282,7 +288,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 0.91
                     0 0 0 0 0.85
                     0 0 0 0 0.78
-                    0 0 0 0.22 0"
+                    0 0 0 0.14 0"
             result="paperTextureStrong"
           />
           <feBlend
@@ -292,10 +298,10 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* Edge-only white spots — most visible */}
+          {/* Edge-only white spots — large blobs, hard threshold */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.030"
+            baseFrequency="0.013"
             numOctaves="2"
             seed="11"
             result="edgeNoise"
@@ -306,7 +312,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.8 -0.35"
+                    0 0 0 0.75 -0.48"
             result="whiteSpotsRaw"
           />
           <feComposite
@@ -315,8 +321,7 @@ export function WatercolorFilters() {
             operator="in"
             result="whiteSpotsBounded"
           />
-          {/* Stronger edge mask — more white at edges */}
-          <feImage href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='65%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='48%25' stop-color='black' stop-opacity='0'/><stop offset='75%25' stop-color='white' stop-opacity='0.7'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>" result="edgeMask" preserveAspectRatio="none" />
+          <feImage href={edgeMaskStrong} result="edgeMask" preserveAspectRatio="none" />
           <feComposite
             in="whiteSpotsBounded"
             in2="edgeMask"
