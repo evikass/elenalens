@@ -1,44 +1,38 @@
 'use client'
 
+import type { CSSProperties } from 'react'
+
 /**
- * SVG filter definitions for real watercolor effect.
+ * Watercolor filter system — split into two reliable parts:
  *
- * APPROACH — split work between SVG filter and reliable techniques:
+ * PART 1 — SVG filter (handles paint bleeding, paper grain, saturation):
+ *   - feDisplacementMap with SMALL scale (2/4/6 for light/medium/strong)
+ *     Higher scale warps faces like a funhouse mirror — that was the bug.
+ *   - feTurbulence + feBlend multiply for paper grain
+ *   - feColorMatrix type="saturate" for pigment boost
+ *   NO white spots in SVG filter — they were unreliable (feImage with
+ *   data: URI fails silently in Safari and some Chromium versions).
  *
- *  1. Paint bleeding — feDisplacementMap with SMALL scale (2-6, not 14-24).
- *     Large scale warps faces like a funhouse mirror — that was the bug.
+ * PART 2 — CSS overlay div (handles white unpainted edges):
+ *   getWatercolorEdgeOverlay(strength) returns CSSProperties for a div
+ *   with radial-gradient background: transparent in center, white at
+ *   edges. This div is placed over the <img> as a sibling, opacity
+ *   scales with watercolor strength.
  *
- *  2. Paper grain — feTurbulence + feBlend multiply, low opacity.
+ *   CSS gradients work reliably in ALL browsers — no feImage dependency.
  *
- *  3. White unpainted edges — feTurbulence + feColorMatrix (threshold)
- *     + feComposite with feImage data: URI containing radial gradient.
- *     The gradient is BLACK in center (0 alpha white spots) and WHITE
- *     at edges (full alpha white spots). feComposite operator="arithmetic"
- *     multiplies the white spots by this gradient, so spots only appear
- *     at photo rim.
- *
- *     The data: URI is carefully encoded:
- *       - '#' is encoded as %23
- *       - '%' in stop offsets is encoded as %25
- *       - We use single quotes inside to avoid HTML attribute escaping
- *
- *  4. Saturation boost — pigments are more saturated.
- *
- *  5. NO CSS blur — it kills edges (looked like foggy glass).
+ * Usage in JSX:
+ *   <div className="relative">
+ *     <img src={...} style={{ filter: buildFilterString(adj) }} />
+ *     {adj.watercolor > 0 && (
+ *       <div
+ *         className="absolute inset-0 pointer-events-none"
+ *         style={getWatercolorEdgeOverlay(adj.watercolor)}
+ *       />
+ *     )}
+ *   </div>
  */
 export function WatercolorFilters() {
-  // Radial gradient edge mask as inline SVG data URI.
-  // Center (0-75% radius): black = alpha 0 = no white spots
-  // 78-82%: transition to white (alpha 1)
-  // 82-100%: white = alpha 1 = white spots fully visible
-  // The '#' is encoded as %23, '%' in stop offsets as %25.
-  // The radial gradient stretches to fill the photo bounding box.
-  const edgeMaskLight = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='75%25' stop-color='black'/><stop offset='82%25' stop-color='white' stop-opacity='0.6'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
-
-  const edgeMaskMedium = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='73%25' stop-color='black'/><stop offset='80%25' stop-color='white' stop-opacity='0.7'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
-
-  const edgeMaskStrong = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='70%25' stop-color='black'/><stop offset='78%25' stop-color='white' stop-opacity='0.85'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
-
   return (
     <svg
       className="absolute w-0 h-0 pointer-events-none"
@@ -48,9 +42,9 @@ export function WatercolorFilters() {
       <defs>
         {/* ============================================================
             LIGHT watercolor — for 1-33% strength
+            scale=2 — almost no warping, hint of paint spread.
             ============================================================ */}
         <filter id="watercolor-light" x="-5%" y="-5%" width="110%" height="110%" filterUnits="objectBoundingBox">
-          {/* Paint bleeding — scale=2 (was 6). No face warping. */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.012"
@@ -67,15 +61,12 @@ export function WatercolorFilters() {
             yChannelSelector="G"
             result="bleeded"
           />
-
           <feColorMatrix
             in="bleeded"
             type="saturate"
             values="1.25"
             result="saturated"
           />
-
-          {/* Paper grain (very low opacity) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.65"
@@ -97,60 +88,12 @@ export function WatercolorFilters() {
             in="saturated"
             in2="paperTextureLight"
             mode="multiply"
-            result="withPaper"
-          />
-
-          {/* White spots — threshold noise into sparse white blobs */}
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.018"
-            numOctaves="2"
-            seed="11"
-            result="edgeNoise"
-          />
-          <feColorMatrix
-            in="edgeNoise"
-            type="matrix"
-            values="0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 1.0 -0.50"
-            result="whiteSpotsRaw"
-          />
-          <feComposite
-            in="whiteSpotsRaw"
-            in2="SourceAlpha"
-            operator="in"
-            result="whiteSpotsBounded"
-          />
-          {/* Multiply white spots by radial edge mask.
-              k1=0, k2=1, k3=0, k4=0: result = (in * in2) — wait,
-              arithmetic formula is: k1*i1*i2 + k2*i1 + k3*i2 + k4.
-              With k1=0, k2=1, k3=0, k4=0: result = in1 (the white spots).
-              We need k1=1 to multiply. Let's use k1=1, k2=0, k3=0, k4=0:
-              result = whiteSpots * edgeMask.
-              But this darkens — we want to KEEP white spots only where
-              mask is white. So k1=1, others 0 is correct. */}
-          <feImage href={edgeMaskLight} result="edgeMask" preserveAspectRatio="none" />
-          <feComposite
-            in="whiteSpotsBounded"
-            in2="edgeMask"
-            operator="arithmetic"
-            k1="1"
-            k2="0"
-            k3="0"
-            k4="0"
-            result="whiteSpotsEdgeOnly"
-          />
-          <feComposite
-            in="whiteSpotsEdgeOnly"
-            in2="withPaper"
-            operator="over"
           />
         </filter>
 
         {/* ============================================================
             MEDIUM watercolor — for 34-66% strength
+            scale=4 — subtle but visible paint spread.
             ============================================================ */}
         <filter id="watercolor-medium" x="-8%" y="-8%" width="116%" height="116%" filterUnits="objectBoundingBox">
           <feTurbulence
@@ -169,7 +112,6 @@ export function WatercolorFilters() {
             yChannelSelector="G"
             result="bleeded"
           />
-
           <feColorMatrix
             in="bleeded"
             type="saturate"
@@ -185,7 +127,6 @@ export function WatercolorFilters() {
                     0 0 0 1 0"
             result="contrastAdjusted"
           />
-
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.55"
@@ -207,51 +148,12 @@ export function WatercolorFilters() {
             in="contrastAdjusted"
             in2="paperTextureMed"
             mode="multiply"
-            result="withPaper"
-          />
-
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.015"
-            numOctaves="2"
-            seed="11"
-            result="edgeNoise"
-          />
-          <feColorMatrix
-            in="edgeNoise"
-            type="matrix"
-            values="0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 1.1 -0.52"
-            result="whiteSpotsRaw"
-          />
-          <feComposite
-            in="whiteSpotsRaw"
-            in2="SourceAlpha"
-            operator="in"
-            result="whiteSpotsBounded"
-          />
-          <feImage href={edgeMaskMedium} result="edgeMask" preserveAspectRatio="none" />
-          <feComposite
-            in="whiteSpotsBounded"
-            in2="edgeMask"
-            operator="arithmetic"
-            k1="1"
-            k2="0"
-            k3="0"
-            k4="0"
-            result="whiteSpotsEdgeOnly"
-          />
-          <feComposite
-            in="whiteSpotsEdgeOnly"
-            in2="withPaper"
-            operator="over"
           />
         </filter>
 
         {/* ============================================================
             STRONG watercolor — for 67-100% strength
+            scale=6 — noticeable paint spread, still no face warping.
             ============================================================ */}
         <filter id="watercolor-strong" x="-12%" y="-12%" width="124%" height="124%" filterUnits="objectBoundingBox">
           <feTurbulence
@@ -270,7 +172,6 @@ export function WatercolorFilters() {
             yChannelSelector="G"
             result="bleeded"
           />
-
           <feColorMatrix
             in="bleeded"
             type="saturate"
@@ -286,7 +187,6 @@ export function WatercolorFilters() {
                     0 0 0 1 0"
             result="contrastAdjusted"
           />
-
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.45"
@@ -308,46 +208,6 @@ export function WatercolorFilters() {
             in="contrastAdjusted"
             in2="paperTextureStrong"
             mode="multiply"
-            result="withPaper"
-          />
-
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.013"
-            numOctaves="2"
-            seed="11"
-            result="edgeNoise"
-          />
-          <feColorMatrix
-            in="edgeNoise"
-            type="matrix"
-            values="0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 0 1
-                    0 0 0 1.2 -0.55"
-            result="whiteSpotsRaw"
-          />
-          <feComposite
-            in="whiteSpotsRaw"
-            in2="SourceAlpha"
-            operator="in"
-            result="whiteSpotsBounded"
-          />
-          <feImage href={edgeMaskStrong} result="edgeMask" preserveAspectRatio="none" />
-          <feComposite
-            in="whiteSpotsBounded"
-            in2="edgeMask"
-            operator="arithmetic"
-            k1="1"
-            k2="0"
-            k3="0"
-            k4="0"
-            result="whiteSpotsEdgeOnly"
-          />
-          <feComposite
-            in="whiteSpotsEdgeOnly"
-            in2="withPaper"
-            operator="over"
           />
         </filter>
       </defs>
@@ -364,4 +224,51 @@ export function getWatercolorFilterId(strength: number): string {
   if (strength <= 33) return 'watercolor-light'
   if (strength <= 66) return 'watercolor-medium'
   return 'watercolor-strong'
+}
+
+/**
+ * Get CSS background style for white paper-edge overlay.
+ * This is a SEPARATE layer placed OVER the <img> (NOT a CSS mask on the img)
+ * to draw white "unpainted paper" at photo edges.
+ *
+ * We use this INSTEAD of feImage inside SVG filter because feImage with
+ * data: URI is unreliable across browsers (especially Safari).
+ *
+ * Returns null if no watercolor (strength = 0).
+ *
+ * Usage in JSX:
+ *   {adj.watercolor > 0 && (
+ *     <div
+ *       className="absolute inset-0 pointer-events-none rounded-sm"
+ *       style={getWatercolorEdgeOverlay(adj.watercolor)}
+ *     />
+ *   )}
+ */
+export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null {
+  if (strength <= 0) return null
+
+  let gradient: string
+  let opacity: number
+
+  if (strength <= 33) {
+    // Light: outer 18% fades to white
+    gradient =
+      'radial-gradient(ellipse at center, transparent 75%, rgba(255,250,245,0.7) 92%, rgba(255,250,245,0.95) 100%)'
+    opacity = 0.6 + (strength / 33) * 0.3 // 0.6 -> 0.9
+  } else if (strength <= 66) {
+    // Medium: outer 22% fades to white
+    gradient =
+      'radial-gradient(ellipse at center, transparent 72%, rgba(255,250,245,0.8) 90%, rgba(255,250,245,1) 100%)'
+    opacity = 0.75 + ((strength - 33) / 33) * 0.2 // 0.75 -> 0.95
+  } else {
+    // Strong: outer 28% fades to white
+    gradient =
+      'radial-gradient(ellipse at center, transparent 68%, rgba(255,250,245,0.9) 88%, rgba(255,250,245,1) 100%)'
+    opacity = 0.85 + ((strength - 66) / 34) * 0.15 // 0.85 -> 1.0
+  }
+
+  return {
+    background: gradient,
+    opacity,
+  }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, ChevronLeft, ChevronRight, Info } from 'lucide-react'
-import { getWatercolorFilterId } from './watercolor-filters'
+import { getWatercolorFilterId, getWatercolorEdgeOverlay } from './watercolor-filters'
 
 const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
@@ -398,6 +398,16 @@ export function Portfolio() {
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                     style={filterStyle}
                   />
+                  {/* White paper-edge overlay for watercolor unpainted rim */}
+                  {hasAdj && adj && adj.watercolor > 0 && (() => {
+                    const overlay = getWatercolorEdgeOverlay(adj.watercolor)
+                    return overlay ? (
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={overlay}
+                      />
+                    ) : null
+                  })()}
                   {/* Watercolor badge */}
                   {hasAdj && adj && adj.watercolor > 0 && (
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] uppercase tracking-wider text-primary">
@@ -488,14 +498,26 @@ export function Portfolio() {
                   currentAdj.exposure !== 0 || currentAdj.warmth !== 0 || currentAdj.contrast !== 0
                 )
                 return (
-                  <img
-                    src={currentShot.src}
-                    alt={currentShot.title}
-                    className="max-w-full max-h-[78vh] object-contain rounded-sm shadow-2xl"
-                    style={currentHasAdj && currentAdj
-                      ? { filter: buildFilterString(currentAdj) }
-                      : undefined}
-                  />
+                  <div className="relative">
+                    <img
+                      src={currentShot.src}
+                      alt={currentShot.title}
+                      className="max-w-full max-h-[78vh] object-contain rounded-sm shadow-2xl"
+                      style={currentHasAdj && currentAdj
+                        ? { filter: buildFilterString(currentAdj) }
+                        : undefined}
+                    />
+                    {/* White paper-edge overlay for watercolor unpainted rim */}
+                    {currentHasAdj && currentAdj && currentAdj.watercolor > 0 && (() => {
+                      const overlay = getWatercolorEdgeOverlay(currentAdj.watercolor)
+                      return overlay ? (
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={overlay}
+                        />
+                      ) : null
+                    })()}
+                  </div>
                 )
               })()}
               <figcaption className="mt-4 flex items-center gap-2 text-center">
