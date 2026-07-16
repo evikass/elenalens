@@ -3,29 +3,41 @@
 /**
  * SVG filter definitions for real watercolor effect.
  *
- * Real watercolor has:
- *  1. PAINT BLEEDING — colors spread at edges (feDisplacementMap with high scale)
- *  2. PAPER GRAIN — subtle overall texture (feTurbulence + multiply, low opacity)
- *  3. WHITE UNPAINTED EDGES — paper showing through ONLY at photo BORDERS
- *     (NOT in the middle — previous version had 'web-like' haze across photo)
- *  4. SATURATION BOOST — pigments are more saturated than photo
- *  5. SHARP EDGES — NOT overall blur (blur kills watercolor look)
+ * APPROACH — split work between SVG filter and reliable techniques:
  *
- * KEY FIX: edge mask now has HARD transition — 0-80% radius fully transparent,
- * only 80-100% (outer ~15-20% of photo) gets white unpainted spots.
- * Center stays 100% clean.
+ *  1. Paint bleeding — feDisplacementMap with SMALL scale (2-6, not 14-24).
+ *     Large scale warps faces like a funhouse mirror — that was the bug.
  *
- * Usage: <img style={{ filter: 'url(#watercolor-medium) saturate(1.3)' }} />
+ *  2. Paper grain — feTurbulence + feBlend multiply, low opacity.
+ *
+ *  3. White unpainted edges — feTurbulence + feColorMatrix (threshold)
+ *     + feComposite with feImage data: URI containing radial gradient.
+ *     The gradient is BLACK in center (0 alpha white spots) and WHITE
+ *     at edges (full alpha white spots). feComposite operator="arithmetic"
+ *     multiplies the white spots by this gradient, so spots only appear
+ *     at photo rim.
+ *
+ *     The data: URI is carefully encoded:
+ *       - '#' is encoded as %23
+ *       - '%' in stop offsets is encoded as %25
+ *       - We use single quotes inside to avoid HTML attribute escaping
+ *
+ *  4. Saturation boost — pigments are more saturated.
+ *
+ *  5. NO CSS blur — it kills edges (looked like foggy glass).
  */
 export function WatercolorFilters() {
-  // Inline SVG strings for edge masks — sharp transition, only outer rim.
-  // 0-78% radius: black (transparent), 78-100%: white (opaque)
-  // This confines white spots to outer ~15-20% of the photo.
-  const edgeMaskLight = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='78%25' stop-color='black' stop-opacity='0'/><stop offset='82%25' stop-color='white' stop-opacity='0.5'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+  // Radial gradient edge mask as inline SVG data URI.
+  // Center (0-75% radius): black = alpha 0 = no white spots
+  // 78-82%: transition to white (alpha 1)
+  // 82-100%: white = alpha 1 = white spots fully visible
+  // The '#' is encoded as %23, '%' in stop offsets as %25.
+  // The radial gradient stretches to fill the photo bounding box.
+  const edgeMaskLight = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='75%25' stop-color='black'/><stop offset='82%25' stop-color='white' stop-opacity='0.6'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
 
-  const edgeMaskMedium = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='52%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='76%25' stop-color='black' stop-opacity='0'/><stop offset='80%25' stop-color='white' stop-opacity='0.6'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+  const edgeMaskMedium = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='73%25' stop-color='black'/><stop offset='80%25' stop-color='white' stop-opacity='0.7'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
 
-  const edgeMaskStrong = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='55%25'><stop offset='0%25' stop-color='black' stop-opacity='0'/><stop offset='73%25' stop-color='black' stop-opacity='0'/><stop offset='78%25' stop-color='white' stop-opacity='0.75'/><stop offset='100%25' stop-color='white' stop-opacity='1'/></radialGradient></defs><rect width='100' height='100' fill='url(%23m)'/></svg>`
+  const edgeMaskStrong = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><defs><radialGradient id='m' cx='50%25' cy='50%25' r='50%25'><stop offset='0%25' stop-color='black'/><stop offset='70%25' stop-color='black'/><stop offset='78%25' stop-color='white' stop-opacity='0.85'/><stop offset='100%25' stop-color='white'/></radialGradient></defs><rect width='200' height='200' fill='url(%23m)'/></svg>"
 
   return (
     <svg
@@ -36,10 +48,9 @@ export function WatercolorFilters() {
       <defs>
         {/* ============================================================
             LIGHT watercolor — for 1-33% strength
-            White spots confined to outer ~20% rim via hard radial mask.
             ============================================================ */}
-        <filter id="watercolor-light" x="-5%" y="-5%" width="110%" height="110%">
-          {/* Paint bleeding — displacement with low freq noise */}
+        <filter id="watercolor-light" x="-5%" y="-5%" width="110%" height="110%" filterUnits="objectBoundingBox">
+          {/* Paint bleeding — scale=2 (was 6). No face warping. */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.012"
@@ -47,17 +58,16 @@ export function WatercolorFilters() {
             seed="5"
             result="bleedNoise"
           />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="softSource" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.3" result="softSource" />
           <feDisplacementMap
             in="softSource"
             in2="bleedNoise"
-            scale="6"
+            scale="2"
             xChannelSelector="R"
             yChannelSelector="G"
             result="bleeded"
           />
 
-          {/* Saturation boost */}
           <feColorMatrix
             in="bleeded"
             type="saturate"
@@ -65,7 +75,7 @@ export function WatercolorFilters() {
             result="saturated"
           />
 
-          {/* Paper grain texture (overall, very low opacity) */}
+          {/* Paper grain (very low opacity) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.65"
@@ -90,7 +100,7 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* EDGE-ONLY white spots — large sparse blobs, masked to rim */}
+          {/* White spots — threshold noise into sparse white blobs */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.018"
@@ -98,14 +108,13 @@ export function WatercolorFilters() {
             seed="11"
             result="edgeNoise"
           />
-          {/* Higher threshold = fewer, larger spots (less web-like) */}
           <feColorMatrix
             in="edgeNoise"
             type="matrix"
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.55 -0.42"
+                    0 0 0 1.0 -0.50"
             result="whiteSpotsRaw"
           />
           <feComposite
@@ -114,14 +123,21 @@ export function WatercolorFilters() {
             operator="in"
             result="whiteSpotsBounded"
           />
-          {/* Hard radial edge mask — center 0-78% transparent, only rim opaque */}
+          {/* Multiply white spots by radial edge mask.
+              k1=0, k2=1, k3=0, k4=0: result = (in * in2) — wait,
+              arithmetic formula is: k1*i1*i2 + k2*i1 + k3*i2 + k4.
+              With k1=0, k2=1, k3=0, k4=0: result = in1 (the white spots).
+              We need k1=1 to multiply. Let's use k1=1, k2=0, k3=0, k4=0:
+              result = whiteSpots * edgeMask.
+              But this darkens — we want to KEEP white spots only where
+              mask is white. So k1=1, others 0 is correct. */}
           <feImage href={edgeMaskLight} result="edgeMask" preserveAspectRatio="none" />
           <feComposite
             in="whiteSpotsBounded"
             in2="edgeMask"
             operator="arithmetic"
-            k1="0"
-            k2="1"
+            k1="1"
+            k2="0"
             k3="0"
             k4="0"
             result="whiteSpotsEdgeOnly"
@@ -136,7 +152,7 @@ export function WatercolorFilters() {
         {/* ============================================================
             MEDIUM watercolor — for 34-66% strength
             ============================================================ */}
-        <filter id="watercolor-medium" x="-8%" y="-8%" width="116%" height="116%">
+        <filter id="watercolor-medium" x="-8%" y="-8%" width="116%" height="116%" filterUnits="objectBoundingBox">
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.010"
@@ -144,11 +160,11 @@ export function WatercolorFilters() {
             seed="5"
             result="bleedNoise"
           />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" result="softSource" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" result="softSource" />
           <feDisplacementMap
             in="softSource"
             in2="bleedNoise"
-            scale="14"
+            scale="4"
             xChannelSelector="R"
             yChannelSelector="G"
             result="bleeded"
@@ -170,7 +186,6 @@ export function WatercolorFilters() {
             result="contrastAdjusted"
           />
 
-          {/* Paper grain (medium opacity) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.55"
@@ -195,7 +210,6 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* Edge-only white spots — larger blobs, harder threshold */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.015"
@@ -209,7 +223,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.65 -0.45"
+                    0 0 0 1.1 -0.52"
             result="whiteSpotsRaw"
           />
           <feComposite
@@ -223,8 +237,8 @@ export function WatercolorFilters() {
             in="whiteSpotsBounded"
             in2="edgeMask"
             operator="arithmetic"
-            k1="0"
-            k2="1"
+            k1="1"
+            k2="0"
             k3="0"
             k4="0"
             result="whiteSpotsEdgeOnly"
@@ -239,7 +253,7 @@ export function WatercolorFilters() {
         {/* ============================================================
             STRONG watercolor — for 67-100% strength
             ============================================================ */}
-        <filter id="watercolor-strong" x="-12%" y="-12%" width="124%" height="124%">
+        <filter id="watercolor-strong" x="-12%" y="-12%" width="124%" height="124%" filterUnits="objectBoundingBox">
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.008"
@@ -247,11 +261,11 @@ export function WatercolorFilters() {
             seed="5"
             result="bleedNoise"
           />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="0.8" result="softSource" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="softSource" />
           <feDisplacementMap
             in="softSource"
             in2="bleedNoise"
-            scale="24"
+            scale="6"
             xChannelSelector="R"
             yChannelSelector="G"
             result="bleeded"
@@ -273,7 +287,6 @@ export function WatercolorFilters() {
             result="contrastAdjusted"
           />
 
-          {/* Paper grain (strong) */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.45"
@@ -298,7 +311,6 @@ export function WatercolorFilters() {
             result="withPaper"
           />
 
-          {/* Edge-only white spots — large blobs, hard threshold */}
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.013"
@@ -312,7 +324,7 @@ export function WatercolorFilters() {
             values="0 0 0 0 1
                     0 0 0 0 1
                     0 0 0 0 1
-                    0 0 0 0.75 -0.48"
+                    0 0 0 1.2 -0.55"
             result="whiteSpotsRaw"
           />
           <feComposite
@@ -326,8 +338,8 @@ export function WatercolorFilters() {
             in="whiteSpotsBounded"
             in2="edgeMask"
             operator="arithmetic"
-            k1="0"
-            k2="1"
+            k1="1"
+            k2="0"
             k3="0"
             k4="0"
             result="whiteSpotsEdgeOnly"
