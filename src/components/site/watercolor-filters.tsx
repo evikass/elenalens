@@ -227,12 +227,19 @@ export function getWatercolorFilterId(strength: number): string {
 }
 
 /**
- * Get CSS background style for white paper-edge overlay.
- * This is a SEPARATE layer placed OVER the <img> (NOT a CSS mask on the img)
- * to draw white "unpainted paper" at photo edges.
+ * Get CSS background style for white paper-edge overlay with TORN edges.
  *
- * We use this INSTEAD of feImage inside SVG filter because feImage with
- * data: URI is unreliable across browsers (especially Safari).
+ * The overlay is a div with:
+ *  - background: warm white (paper color)
+ *  - mask-image: inline SVG with radial gradient + feTurbulence +
+ *    feDisplacementMap — the gradient creates the "unpainted at edges"
+ *    shape, and the displacement makes the edges IRREGULAR/torn,
+ *    like a real brush couldn't reach the paper edge cleanly.
+ *
+ * The mask is white at center (overlay hidden = photo visible) and
+ * black at edges (overlay visible = white paper showing). The transition
+ * zone is displaced by fractal noise, creating torn, organic edges
+ * instead of a smooth ellipse.
  *
  * Returns null if no watercolor (strength = 0).
  *
@@ -247,28 +254,57 @@ export function getWatercolorFilterId(strength: number): string {
 export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null {
   if (strength <= 0) return null
 
-  let gradient: string
+  // Configure per-strength parameters
+  let innerStop: number // where white starts (transition begin)
+  let outerStop: number // where white is fully opaque
   let opacity: number
+  let displacement: number // how much the edge is distorted (torn)
 
   if (strength <= 33) {
-    // Light: outer 18% fades to white
-    gradient =
-      'radial-gradient(ellipse at center, transparent 75%, rgba(255,250,245,0.7) 92%, rgba(255,250,245,0.95) 100%)'
-    opacity = 0.6 + (strength / 33) * 0.3 // 0.6 -> 0.9
+    innerStop = 75
+    outerStop = 92
+    opacity = 0.7 + (strength / 33) * 0.2 // 0.7 -> 0.9
+    displacement = 18
   } else if (strength <= 66) {
-    // Medium: outer 22% fades to white
-    gradient =
-      'radial-gradient(ellipse at center, transparent 72%, rgba(255,250,245,0.8) 90%, rgba(255,250,245,1) 100%)'
-    opacity = 0.75 + ((strength - 33) / 33) * 0.2 // 0.75 -> 0.95
+    innerStop = 72
+    outerStop = 90
+    opacity = 0.8 + ((strength - 33) / 33) * 0.15 // 0.8 -> 0.95
+    displacement = 28
   } else {
-    // Strong: outer 28% fades to white
-    gradient =
-      'radial-gradient(ellipse at center, transparent 68%, rgba(255,250,245,0.9) 88%, rgba(255,250,245,1) 100%)'
-    opacity = 0.85 + ((strength - 66) / 34) * 0.15 // 0.85 -> 1.0
+    innerStop = 68
+    outerStop = 88
+    opacity = 0.9 + ((strength - 66) / 34) * 0.1 // 0.9 -> 1.0
+    displacement = 40
   }
 
+  // Inline SVG mask: radial gradient (black center -> white edges)
+  // with feTurbulence + feDisplacementMap for torn, organic edges.
+  // Encoding: '#' -> %23, '%' in stop offsets -> %25, single quotes inside.
+  const maskSvg =
+    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
+    `<defs>` +
+    `<radialGradient id='r' cx='50%25' cy='50%25' r='50%25'>` +
+    `<stop offset='0%25' stop-color='black'/>` +
+    `<stop offset='${innerStop}%25' stop-color='black'/>` +
+    `<stop offset='${outerStop}%25' stop-color='white'/>` +
+    `<stop offset='100%25' stop-color='white'/>` +
+    `</radialGradient>` +
+    `<filter id='t'>` +
+    `<feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' seed='5' result='noise'/>` +
+    `<feDisplacementMap in='SourceGraphic' in2='noise' scale='${displacement}' xChannelSelector='R' yChannelSelector='G'/>` +
+    `</filter>` +
+    `</defs>` +
+    `<rect width='400' height='400' fill='url(%23r)' filter='url(%23t)'/>` +
+    `</svg>`
+
   return {
-    background: gradient,
+    background: 'rgba(255, 250, 245, 1)',
+    maskImage: `url("${maskSvg}")`,
+    WebkitMaskImage: `url("${maskSvg}")`,
+    maskSize: '100% 100%',
+    WebkitMaskSize: '100% 100%',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
     opacity,
   }
 }
