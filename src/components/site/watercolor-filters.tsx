@@ -233,23 +233,23 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * React component that renders a white paper-edge overlay with TORN edges.
  *
- * HYBRID APPROACH — combines reliable CSS with SVG noise for torn effect:
+ * PURE SVG APPROACH — generates torn mask from noise, no gradient:
  *
- * 1. Outer div: white background (rgba(255,250,245)) with CSS radial-gradient
- *    as mask-image. Gradient: black center (overlay hidden = photo visible)
- *    to white edges (overlay visible = white paper). SHARP transition.
- *    This creates clean white rim with photo visible in center.
+ * The mask is built from TWO sources composited together:
+ *   1. Radial gradient (black center → white edges) — defines WHERE
+ *      overlay is allowed (edges only, center stays clean)
+ *   2. Fractal noise thresholded to binary — defines the TORN texture
  *
- * 2. CSS mask-image ALSO includes an SVG noise layer (via url() with inline
- *    SVG data: URI). The noise is thresholded to binary black/white and
- *    composited with the radial gradient via mask-composite: intersect.
- *    This tears the gradient boundary — white areas of noise that fall
- *    in the gradient's black zone (center) REMAIN black (no white leak),
- *    but the boundary itself becomes irregular.
+ * Composited via feComposite operator="arithmetic" k1=1 k2=0 k3=0 k4=0:
+ *   result = noise * gradient
  *
- * Unlike feDisplacementMap (which always produces smooth fade because it
- * works on gradient pixels), this approach uses BINARY noise threshold
- * for true torn edges.
+ * This means:
+ *   - Where gradient is black (center) → result is black (photo visible)
+ *     regardless of noise — center STAYS clean
+ *   - Where gradient is white (edges) → result = noise → torn white patches
+ *   - Transition zone → torn boundary between black and white
+ *
+ * Unlike feDisplacementMap (smooth fade), this gives BINARY torn edges.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
@@ -258,58 +258,101 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let innerStop: number      // where white STARTS (overlay begins)
   let outerStop: number      // where white is FULLY opaque
   let opacity: number
-  let noiseScale: number     // SVG turbulence frequency for torn edge
+  let noiseScale: number     // SVG turbulence frequency
 
   if (strength <= 33) {
     innerStop = 72
-    outerStop = 80
+    outerStop = 82
     opacity = 0.7 + (strength / 33) * 0.2
-    noiseScale = 0.025
+    noiseScale = 0.020
   } else if (strength <= 66) {
     innerStop = 68
-    outerStop = 78
+    outerStop = 80
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    noiseScale = 0.020
+    noiseScale = 0.016
   } else {
     innerStop = 64
-    outerStop = 76
+    outerStop = 78
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    noiseScale = 0.018
+    noiseScale = 0.014
   }
 
-  // SVG noise pattern as data: URI — threshold to binary black/white
-  // This will be used as a SECOND mask layer, intersected with the radial gradient.
-  const noiseSvg =
-    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
-    `<defs>` +
-    `<filter id='n'>` +
-    `<feTurbulence type='fractalNoise' baseFrequency='${noiseScale}' numOctaves='2' seed='5' result='noise'/>` +
-    `<feColorMatrix in='noise' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.5 -0.6' result='bin'/>` +
-    `</filter>` +
-    `</defs>` +
-    `<rect width='400' height='400' fill='black' filter='url(%23n)'/>` +
-    `</svg>`
-
-  // CSS mask: radial gradient (overlay visible at edges) + noise (torn effect)
-  // mask-composite: intersect — overlay visible only where BOTH gradients are white
-  const gradientMask = `radial-gradient(ellipse at center, transparent ${innerStop}%, black ${outerStop}%, black 100%)`
-  const noiseMask = `url("${noiseSvg}")`
+  // Unique IDs
+  const uid = `wc${++maskIdCounter}`
+  const maskId = `mask-${uid}`
+  const filterId = `torn-${uid}`
+  const gradId = `grad-${uid}`
 
   return (
-    <div
-      className="absolute inset-0 pointer-events-none"
-      style={{
-        background: 'rgb(255, 250, 245)',
-        maskImage: `${gradientMask}, ${noiseMask}`,
-        WebkitMaskImage: `${gradientMask}, ${noiseMask}`,
-        maskComposite: 'intersect',
-        WebkitMaskComposite: 'source-in',
-        maskRepeat: 'no-repeat',
-        WebkitMaskRepeat: 'no-repeat',
-        maskSize: '100% 100%, 100% 100%',
-        WebkitMaskSize: '100% 100%, 100% 100%',
-        opacity,
-      }}
-    />
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ opacity }}
+      aria-hidden="true"
+    >
+      <defs>
+        {/* Radial gradient: black center → white edges (WHERE overlay allowed) */}
+        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="black" />
+          <stop offset={`${innerStop}%`} stopColor="black" />
+          <stop offset={`${outerStop}%`} stopColor="white" />
+          <stop offset="100%" stopColor="white" />
+        </radialGradient>
+
+        {/* Filter: generate noise, threshold to binary, multiply by gradient */}
+        <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
+          {/* Generate fractal noise */}
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency={noiseScale}
+            numOctaves="2"
+            seed="5"
+            result="noise"
+          />
+          {/* Threshold noise to BINARY: alpha > 0.5 → 1, else → 0
+              This creates RAGGED torn shapes, not smooth gradient. */}
+          <feColorMatrix
+            in="noise"
+            type="matrix"
+            values="0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 1.8 -0.7"
+            result="binNoise"
+          />
+          {/* Multiply binary noise by the radial gradient:
+              - Center (gradient=0): result=0 → black (photo visible)
+              - Edges (gradient=1): result=noise → torn white patches
+              - Transition: torn boundary */}
+          <feComposite
+            in="binNoise"
+            in2="SourceGraphic"
+            operator="arithmetic"
+            k1="1"
+            k2="0"
+            k3="0"
+            k4="0"
+          />
+        </filter>
+
+        {/* Mask: rect filled with gradient, filtered to torn noise*gradient */}
+        <mask id={maskId}>
+          <rect
+            width="100%"
+            height="100%"
+            fill={`url(#${gradId})`}
+            filter={`url(#${filterId})`}
+          />
+        </mask>
+      </defs>
+
+      {/* White paper rectangle — visible where mask is white (torn edges),
+          hidden where mask is black (center) */}
+      <rect
+        width="100%"
+        height="100%"
+        fill="rgb(255, 250, 245)"
+        mask={`url(#${maskId})`}
+      />
+    </svg>
   )
 }
