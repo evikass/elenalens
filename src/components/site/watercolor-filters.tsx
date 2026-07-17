@@ -231,59 +231,61 @@ export function getWatercolorFilterId(strength: number): string {
 }
 
 /**
- * React component that renders a SOFT white paper-edge overlay.
+ * React component that renders a THIN TORN white paper-edge overlay.
  *
- * APPROACH: SVG <mask> with radial gradient — soft, subtle unpainted
- * paper at the very edge of the photo, NOT aggressive torn edges.
+ * APPROACH: SVG <mask> with radial gradient + feDisplacementMap.
  *
- * The mask is a radial gradient:
- *   - Black (overlay hidden = photo visible) at center 0-85%
- *   - Smooth transition 85-100% (soft fade)
- *   - White (overlay visible = white paper) at outer 95-100%
+ * The mask is a radial gradient with VERY NARROW transition zone
+ * (only 3-5% of photo width = 2-5mm at edge), then feDisplacementMap
+ * distorts the gradient boundary by fractal noise — creating
+ * IRREGULAR, TORN edge (not smooth oval, not aggressive star).
  *
- * This creates a GENTLE white rim that looks like watercolor paper
- * showing through where the brush didn't quite reach the edge —
- * not a harsh torn border.
+ * The result: thin white rim at the very edge of the photo with
+ * jagged/torn inner boundary, like watercolor paper where the brush
+ * didn't quite reach — subtle but with organic irregular edge.
  *
- * The `strength` parameter (0-100) controls:
- *   - How far the white extends inward (rim width)
- *   - How opaque the white is
+ * Parameters (strength 0-100):
+ *   - innerStop: where white starts (e.g. 95% = rim begins at 95%)
+ *   - outerStop: where white is fully opaque (e.g. 99%)
+ *   - displacement: how much the boundary is distorted (torn effect)
+ *   - opacity: overall overlay opacity
  *
- * This is SEPARATE from the watercolor SVG filter (which handles
- * paint bleeding, saturation, paper grain). User can apply unpaint
- * independently via the 'unpaint' slider.
+ * The rim is always THIN (3-5% of photo width = 2-5mm), regardless
+ * of strength. Strength only controls opacity + displacement amount.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
-  // Per-strength parameters — SOFT, SUBTLE rim
-  // innerStop: where white STARTS (overlay begins to appear)
-  // outerStop: where white is FULLY opaque
-  // opacity: overall overlay opacity
-  let innerStop: number
-  let outerStop: number
+  // Per-strength parameters — THIN rim (3-5%) with TORN edge
+  let innerStop: number      // where white STARTS (rim begins)
+  let outerStop: number      // where white is FULLY opaque
   let opacity: number
+  let displacement: number   // torn edge distortion amount
 
   if (strength <= 33) {
-    // Light: very thin rim, only at outer 5%
-    innerStop = 90
+    // Light: 5% rim, subtle torn
+    innerStop = 94
     outerStop = 99
-    opacity = 0.5 + (strength / 33) * 0.2 // 0.5 → 0.7
+    opacity = 0.55 + (strength / 33) * 0.15 // 0.55 → 0.70
+    displacement = 2
   } else if (strength <= 66) {
-    // Medium: rim at outer 8%
-    innerStop = 87
-    outerStop = 98
-    opacity = 0.65 + ((strength - 33) / 33) * 0.2 // 0.65 → 0.85
+    // Medium: 4% rim, more visible torn
+    innerStop = 95
+    outerStop = 99
+    opacity = 0.7 + ((strength - 33) / 33) * 0.15 // 0.70 → 0.85
+    displacement = 3
   } else {
-    // Strong: rim at outer 12%
-    innerStop = 83
-    outerStop = 97
-    opacity = 0.8 + ((strength - 66) / 34) * 0.15 // 0.8 → 0.95
+    // Strong: 3% rim (very thin), prominent torn
+    innerStop = 96
+    outerStop = 99.5
+    opacity = 0.8 + ((strength - 66) / 34) * 0.15 // 0.80 → 0.95
+    displacement = 4
   }
 
   // Unique IDs
   const uid = `wc${++maskIdCounter}`
   const maskId = `mask-${uid}`
+  const filterId = `torn-${uid}`
   const gradId = `grad-${uid}`
 
   return (
@@ -295,19 +297,43 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       aria-hidden="true"
     >
       <defs>
-        {/* Radial gradient: black center (photo visible) → white edge (paper).
-            Smooth transition creates SOFT unpainted rim, not harsh border. */}
+        {/* Radial gradient with NARROW transition (3-5% of width).
+            Black center (photo visible) → white edge (paper visible). */}
         <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="black" />
           <stop offset={`${innerStop}%`} stopColor="black" />
           <stop offset={`${outerStop}%`} stopColor="white" />
           <stop offset="100%" stopColor="white" />
         </radialGradient>
+        {/* feDisplacementMap distorts the gradient boundary by fractal
+            noise, creating IRREGULAR TORN edge (not smooth oval).
+            Small displacement = subtle jaggedness, not aggressive star. */}
+        <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.08"
+            numOctaves="2"
+            seed="5"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale={displacement}
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
         <mask id={maskId}>
-          <rect width="100" height="100" fill={`url(#${gradId})`} />
+          <rect
+            width="100"
+            height="100"
+            fill={`url(#${gradId})`}
+            filter={`url(#${filterId})`}
+          />
         </mask>
       </defs>
-      {/* White paper rect — visible at outer rim (soft fade),
+      {/* White paper rect — visible at thin torn rim (outer 3-5%),
           hidden in center (photo visible) */}
       <rect
         width="100"
