@@ -256,42 +256,39 @@ export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null
     coreSize = 72
     fadeWidth = 18
     opacity = 0.7 + (strength / 33) * 0.2 // 0.7 -> 0.9
-    jitter = 6
+    jitter = 10
   } else if (strength <= 66) {
     coreSize = 68
     fadeWidth = 22
     opacity = 0.8 + ((strength - 33) / 33) * 0.15 // 0.8 -> 0.95
-    jitter = 9
+    jitter = 14
   } else {
     coreSize = 64
     fadeWidth = 26
     opacity = 0.9 + ((strength - 66) / 34) * 0.1 // 0.9 -> 1.0
-    jitter = 12
+    jitter = 18
   }
 
-  // Generate radial gradients with offset centers but SAME size.
-  // All gradients are 'ellipse 50% 50%' (reaches box edges).
-  // Different centers create torn/irregular boundary when combined with 'add'.
-  const gradients: string[] = []
-  const positions = [
-    { x: 50, y: 50 },
-    { x: 50 - jitter, y: 50 - jitter },
-    { x: 50 + jitter, y: 50 - jitter },
-    { x: 50 - jitter, y: 50 + jitter },
-    { x: 50 + jitter, y: 50 + jitter },
-    { x: 50, y: 50 - jitter * 1.5 },
-    { x: 50, y: 50 + jitter * 1.5 },
-    { x: 50 - jitter * 1.5, y: 50 },
-    { x: 50 + jitter * 1.5, y: 50 },
+  // Use ONLY 3 gradients with LARGE jitter and HARD transition (no fade).
+  // With mask-composite: add (union), overlay is visible where ANY gradient
+  // is opaque. The centered gradient creates the base rim. Two offset
+  // gradients create torn irregularity — their opaque zones extend into
+  // different parts of the rim, making the inner boundary irregular.
+  //
+  // HARD transition (transparent -> black at same stop) prevents alpha
+  // buildup in transition zones that caused white spots in center.
+  const fadeStop = coreSize + fadeWidth
+  const gradients = [
+    // Base centered gradient — creates the main rim
+    `radial-gradient(ellipse 50% 50% at 50% 50%, ` +
+    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
+    // Offset gradient 1 — tears the top-left side
+    `radial-gradient(ellipse 50% 50% at ${50 - jitter}% ${50 - jitter}%, ` +
+    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
+    // Offset gradient 2 — tears the bottom-right side
+    `radial-gradient(ellipse 50% 50% at ${50 + jitter}% ${50 + jitter}%, ` +
+    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
   ]
-
-  for (const p of positions) {
-    gradients.push(
-      `radial-gradient(ellipse 50% 50% at ${p.x}% ${p.y}%, ` +
-      `transparent 0%, transparent ${coreSize}%, ` +
-      `black ${(coreSize + fadeWidth)}%, black 100%)`
-    )
-  }
 
   // Combine all gradients — add (union) means overlay is visible where
   // ANY gradient is opaque (black). The inner boundary of the union is
