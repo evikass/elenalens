@@ -261,19 +261,19 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let points: number         // number of polygon points
 
   if (strength <= 33) {
-    innerRadius = 45
+    innerRadius = 48
     opacity = 0.7 + (strength / 33) * 0.2
-    jitter = 8
+    jitter = 6
     points = 24
   } else if (strength <= 66) {
-    innerRadius = 42
+    innerRadius = 46
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    jitter = 10
+    jitter = 8
     points = 28
   } else {
-    innerRadius = 40
+    innerRadius = 44
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    jitter = 12
+    jitter = 10
     points = 32
   }
 
