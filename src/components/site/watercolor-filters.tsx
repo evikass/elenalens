@@ -277,39 +277,28 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
     points = 32
   }
 
-  // Generate polygon points alternating outer (50%) and inner (jittered).
-  // This creates a star-like shape where the OUTER points are at box edge
-  // (mask white = paper visible at corners/edges) and INNER points are
-  // at jittered radius (mask boundary = torn edge between paper and photo).
-  const maskPoints: string[] = []
-  const totalPoints = points * 2 // alternating outer + inner
-  for (let i = 0; i < totalPoints; i++) {
-    const angle = (i / totalPoints) * 2 * Math.PI
-    const isOuter = i % 2 === 0
-    if (isOuter) {
-      // Outer point — at the box edge (radius 50)
-      const x = 50 + 50 * Math.cos(angle)
-      const y = 50 + 50 * Math.sin(angle)
-      maskPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
-    } else {
-      // Inner point — jittered radius (boundary between paper and photo)
-      const seed = ((i * 7919 + 13) % 1000) / 1000
-      const r = innerRadius + (seed - 0.5) * 2 * jitter
-      const x = 50 + r * Math.cos(angle)
-      const y = 50 + r * Math.sin(angle)
-      maskPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
-    }
+  // Generate jittered polygon points for the INNER boundary (photo area).
+  // This polygon defines where the photo is VISIBLE (mask = black = hole).
+  // The rest of the mask is white = white paper visible at edges.
+  const holePoints: string[] = []
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * 2 * Math.PI
+    // Deterministic pseudo-random jitter
+    const seed = ((i * 7919 + 13) % 1000) / 1000
+    const r = innerRadius + (seed - 0.5) * 2 * jitter
+    const x = 50 + r * Math.cos(angle)
+    const y = 50 + r * Math.sin(angle)
+    holePoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
   }
 
   // Unique IDs
   const uid = `wc${++maskIdCounter}`
   const maskId = `mask-${uid}`
 
-  // The mask polygon: star-like shape covering corners/edges (white = paper)
-  // with jittered inner boundary (torn edge to photo center).
-  // Outside the polygon = black = photo visible (but polygon covers full box
-  // at outer points, so only the inner area is photo-visible).
-  const maskPath = `M ${maskPoints.join(' L ')} Z`
+  // The mask: white background (paper visible) with black jittered polygon
+  // hole in the center (photo visible through the hole).
+  // TORN EDGES come from the jittered polygon vertices.
+  const holePath = `M ${holePoints.join(' L ')} Z`
 
   return (
     <svg
@@ -321,14 +310,14 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
     >
       <defs>
         <mask id={maskId}>
-          {/* Black background = overlay HIDDEN (photo visible) */}
-          <rect width="100" height="100" fill="black" />
-          {/* White star polygon = overlay VISIBLE (white paper at edges) */}
-          <path d={maskPath} fill="white" />
+          {/* White background = overlay VISIBLE (white paper at edges/corners) */}
+          <rect width="100" height="100" fill="white" />
+          {/* Black jittered polygon = overlay HIDDEN (photo visible in center) */}
+          <path d={holePath} fill="black" />
         </mask>
       </defs>
-      {/* White paper rect — visible where mask is white (edges/corners),
-          hidden where mask is black (center = photo visible) */}
+      {/* White paper rect — visible everywhere EXCEPT the jittered hole
+          (where photo shows through with torn organic boundary) */}
       <rect
         width="100"
         height="100"
