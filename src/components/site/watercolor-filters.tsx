@@ -278,14 +278,20 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   }
 
   // Generate jittered polygon points for the INNER boundary (photo area).
-  // This polygon defines where the photo is VISIBLE (mask = black = hole).
-  // The rest of the mask is white = white paper visible at edges.
+  // Use MULTIPLE harmonics of jitter for more organic, torn look.
   const holePoints: string[] = []
   for (let i = 0; i < points; i++) {
     const angle = (i / points) * 2 * Math.PI
-    // Deterministic pseudo-random jitter
-    const seed = ((i * 7919 + 13) % 1000) / 1000
-    const r = innerRadius + (seed - 0.5) * 2 * jitter
+    // Combine 3 different pseudo-random seeds for more organic variation
+    const seed1 = ((i * 7919 + 13) % 1000) / 1000
+    const seed2 = ((i * 1597 + 29) % 1000) / 1000
+    const seed3 = ((i * 2741 + 41) % 1000) / 1000
+    // Multi-frequency jitter: large slow variation + small fast variation
+    const jitterValue =
+      (seed1 - 0.5) * 2 * jitter +
+      (seed2 - 0.5) * 2 * jitter * 0.5 +
+      (seed3 - 0.5) * 2 * jitter * 0.25
+    const r = innerRadius + jitterValue
     const x = 50 + r * Math.cos(angle)
     const y = 50 + r * Math.sin(angle)
     holePoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
@@ -294,10 +300,10 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   // Unique IDs
   const uid = `wc${++maskIdCounter}`
   const maskId = `mask-${uid}`
+  const filterId = `torn-${uid}`
 
   // The mask: white background (paper visible) with black jittered polygon
   // hole in the center (photo visible through the hole).
-  // TORN EDGES come from the jittered polygon vertices.
   const holePath = `M ${holePoints.join(' L ')} Z`
 
   return (
@@ -309,11 +315,30 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       aria-hidden="true"
     >
       <defs>
+        {/* Filter adds additional torn texture to the polygon boundary.
+            feTurbulence + feDisplacementMap distorts the edge by noise. */}
+        <filter id={filterId} x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.04"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="3"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
         <mask id={maskId}>
           {/* White background = overlay VISIBLE (white paper at edges/corners) */}
           <rect width="100" height="100" fill="white" />
-          {/* Black jittered polygon = overlay HIDDEN (photo visible in center) */}
-          <path d={holePath} fill="black" />
+          {/* Black jittered polygon = overlay HIDDEN (photo visible in center).
+              Filter adds fine torn texture to the boundary. */}
+          <path d={holePath} fill="black" filter={`url(#${filterId})`} />
         </mask>
       </defs>
       {/* White paper rect — visible everywhere EXCEPT the jittered hole
