@@ -233,24 +233,29 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * React component that renders a white paper-edge overlay with TORN edges.
  *
- * APPROACH: CSS clip-path with polygon() — points on a circle with
- * random radial jitter create torn/organic boundary.
+ * APPROACH: SVG <mask> defines where the white overlay is VISIBLE.
  *
- * The overlay is a white div that covers the entire photo. A clip-path
- * polygon removes the center, leaving only a torn rim. The polygon is
- * generated with:
- *   - N points evenly distributed around a circle
- *   - Each point's radius randomly jittered by ±jitter%
- *   - Smaller N + larger jitter = more torn/ragged look
+ * The mask contains:
+ *   - Black background (overlay HIDDEN = photo visible)
+ *   - White jittered polygon ring (overlay VISIBLE = white paper)
  *
- * This is 100% reliable (clip-path: polygon is supported everywhere)
- * and creates TRUE torn edges because polygon vertices are sharp.
+ * The polygon ring is generated as a star-like shape:
+ *   - Outer points at the box edges (50% radius, where overlay covers corners)
+ *   - Inner points jittered around innerRadius (where photo shows through)
+ *   - Alternating outer/inner points create a torn zigzag boundary
+ *
+ * The SVG has a white rect covering everything, masked by the ring shape.
+ * Where mask is white (ring) → white paper visible.
+ * Where mask is black (center + outside box) → photo visible.
+ *
+ * Result: photo visible in torn oval center, white paper at edges with
+ * torn organic boundary between them.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
   // Per-strength parameters
-  let innerRadius: number    // base radius of cutout (0-50, 50=full)
+  let innerRadius: number    // base radius of photo-visible area (0-50)
   let opacity: number
   let jitter: number         // radial jitter % for torn effect
   let points: number         // number of polygon points
@@ -272,58 +277,39 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
     points = 32
   }
 
-  // Generate polygon points: circle with jittered radius.
-  // The polygon defines the CUTOUT (center that's removed = photo visible).
-  // We use 'evenodd' fill rule so the polygon creates a hole in the div.
-  //
-  // Actually, clip-path: polygon can only define a single shape, not a
-  // shape with a hole. So we need TWO polygons: outer (50% radius = full
-  // div) and inner (jittered). CSS doesn't support multi-polygon clip-path
-  // directly, but we can use 'evenodd' via SVG clipPath... or simpler:
-  // use the polygon as the SHAPE, and the div's background covers everything
-  // INSIDE the polygon. We want the opposite: cover OUTSIDE, hole INSIDE.
-  //
-  // Solution: make the polygon follow a star-like path that goes:
-  //   - Outer corner (50% radius)
-  //   - Inner point (jittered radius, photo visible)
-  //   - Next outer corner
-  //   - Next inner point
-  //   - ... alternating around the circle
-  // This creates a star polygon where the center is excluded.
-  //
-  // But clip-path removes everything OUTSIDE the polygon. So we need:
-  //   - Polygon covers the entire div (outer points at corners/edges)
-  //   - With a zigzag inner boundary that creates the torn hole
-  //
-  // Simpler approach: use a single polygon that traces a torn circle,
-  // where points alternate between outer (50%) and inner (jittered).
-  // The polygon fill covers everything between — but we want a HOLE.
-  //
-  // Best approach: TWO divs.
-  //   - Bottom div: white, covers everything (clip-path: none)
-  //   - Top div: same background as photo (or transparent with mix-blend)
-  //     clipped to the inner jittered circle — punches a hole in the white
-  //
-  // Even simpler: use SVG with <path> using evenodd fill rule.
-  // Generate path with two subpaths: outer rectangle + inner jittered circle.
-  // Fill with evenodd → inner circle becomes a hole.
-
-  // Generate inner circle points (jittered) — values 0-100 (SVG user units)
-  const innerPoints: string[] = []
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * 2 * Math.PI
-    // Deterministic pseudo-random jitter (so it doesn't change on re-render)
-    const seed = ((i * 7919 + 13) % 1000) / 1000
-    const r = innerRadius + (seed - 0.5) * 2 * jitter
-    const x = 50 + r * Math.cos(angle)
-    const y = 50 + r * Math.sin(angle)
-    innerPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+  // Generate polygon points alternating outer (50%) and inner (jittered).
+  // This creates a star-like shape where the OUTER points are at box edge
+  // (mask white = paper visible at corners/edges) and INNER points are
+  // at jittered radius (mask boundary = torn edge between paper and photo).
+  const maskPoints: string[] = []
+  const totalPoints = points * 2 // alternating outer + inner
+  for (let i = 0; i < totalPoints; i++) {
+    const angle = (i / totalPoints) * 2 * Math.PI
+    const isOuter = i % 2 === 0
+    if (isOuter) {
+      // Outer point — at the box edge (radius 50)
+      const x = 50 + 50 * Math.cos(angle)
+      const y = 50 + 50 * Math.sin(angle)
+      maskPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+    } else {
+      // Inner point — jittered radius (boundary between paper and photo)
+      const seed = ((i * 7919 + 13) % 1000) / 1000
+      const r = innerRadius + (seed - 0.5) * 2 * jitter
+      const x = 50 + r * Math.cos(angle)
+      const y = 50 + r * Math.sin(angle)
+      maskPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+    }
   }
 
-  // SVG path: outer rectangle (full box) + inner jittered polygon (hole)
-  // evenodd fill rule makes the inner polygon a hole — photo visible there
-  const innerPath = `M ${innerPoints.join(' L ')} Z`
-  const fullPath = `M 0,0 L 100,0 L 100,100 L 0,100 Z ${innerPath}`
+  // Unique IDs
+  const uid = `wc${++maskIdCounter}`
+  const maskId = `mask-${uid}`
+
+  // The mask polygon: star-like shape covering corners/edges (white = paper)
+  // with jittered inner boundary (torn edge to photo center).
+  // Outside the polygon = black = photo visible (but polygon covers full box
+  // at outer points, so only the inner area is photo-visible).
+  const maskPath = `M ${maskPoints.join(' L ')} Z`
 
   return (
     <svg
@@ -333,10 +319,21 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path
-        d={fullPath}
+      <defs>
+        <mask id={maskId}>
+          {/* Black background = overlay HIDDEN (photo visible) */}
+          <rect width="100" height="100" fill="black" />
+          {/* White star polygon = overlay VISIBLE (white paper at edges) */}
+          <path d={maskPath} fill="white" />
+        </mask>
+      </defs>
+      {/* White paper rect — visible where mask is white (edges/corners),
+          hidden where mask is black (center = photo visible) */}
+      <rect
+        width="100"
+        height="100"
         fill="rgb(255, 250, 245)"
-        fillRule="evenodd"
+        mask={`url(#${maskId})`}
       />
     </svg>
   )
