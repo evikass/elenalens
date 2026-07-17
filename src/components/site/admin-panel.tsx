@@ -26,7 +26,7 @@ import {
   buildFilterString,
   type PhotoAdjustments,
 } from './photo-editor'
-import { getWatercolorEdgeOverlay } from './watercolor-filters'
+import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
 
 // Admin password — change here if needed
 const ADMIN_PASSWORD = 'Elena'
@@ -543,15 +543,9 @@ export function AdminPanel() {
                             } : undefined}
                           />
                           {/* White paper-edge overlay for watercolor */}
-                          {hasAdj && adj && adj.watercolor > 0 && (() => {
-                            const overlay = getWatercolorEdgeOverlay(adj.watercolor)
-                            return overlay ? (
-                              <div
-                                className="absolute inset-0 pointer-events-none"
-                                style={overlay}
-                              />
-                            ) : null
-                          })()}
+                          {hasAdj && adj && adj.watercolor > 0 && (
+                            <WatercolorEdgeOverlay strength={adj.watercolor} />
+                          )}
                           {isWc && (
                             <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full">
                               {adj?.watercolor ? `${adj.watercolor}%` : 'Акварель'}

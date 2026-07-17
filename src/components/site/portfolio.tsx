@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, ChevronLeft, ChevronRight, Info } from 'lucide-react'
-import { getWatercolorFilterId, getWatercolorEdgeOverlay } from './watercolor-filters'
+import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
 
 const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
@@ -399,15 +399,9 @@ export function Portfolio() {
                     style={filterStyle}
                   />
                   {/* White paper-edge overlay for watercolor unpainted rim */}
-                  {hasAdj && adj && adj.watercolor > 0 && (() => {
-                    const overlay = getWatercolorEdgeOverlay(adj.watercolor)
-                    return overlay ? (
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={overlay}
-                      />
-                    ) : null
-                  })()}
+                  {hasAdj && adj && adj.watercolor > 0 && (
+                    <WatercolorEdgeOverlay strength={adj.watercolor} />
+                  )}
                   {/* Watercolor badge */}
                   {hasAdj && adj && adj.watercolor > 0 && (
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] uppercase tracking-wider text-primary">
@@ -508,15 +502,9 @@ export function Portfolio() {
                         : undefined}
                     />
                     {/* White paper-edge overlay for watercolor unpainted rim */}
-                    {currentHasAdj && currentAdj && currentAdj.watercolor > 0 && (() => {
-                      const overlay = getWatercolorEdgeOverlay(currentAdj.watercolor)
-                      return overlay ? (
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={overlay}
-                        />
-                      ) : null
-                    })()}
+                    {currentHasAdj && currentAdj && currentAdj.watercolor > 0 && (
+                      <WatercolorEdgeOverlay strength={currentAdj.watercolor} />
+                    )}
                   </div>
                 )
               })()}

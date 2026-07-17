@@ -2,6 +2,10 @@
 
 import type { CSSProperties } from 'react'
 
+// Counter for unique SVG mask IDs (prevents collisions when multiple
+// watercolor overlays are rendered on the same page)
+let maskIdCounter = 0
+
 /**
  * Watercolor filter system — split into two reliable parts:
  *
@@ -227,84 +231,101 @@ export function getWatercolorFilterId(strength: number): string {
 }
 
 /**
- * Get CSS background style for white paper-edge overlay with TORN edges.
+ * React component that renders a white paper-edge overlay with TORN edges.
  *
- * APPROACH: Layered radial-gradients with RANDOM OFFSET centers.
- * Each gradient is a small ellipse of "transparent" (center) → "white" (edge)
- * placed at a slightly off-center position. Combined via CSS mask-image
- * with mask-composite: subtract — we SUBTRACT the transparent holes
- * (where photo shows) from a fully white overlay.
+ * Uses inline SVG with native <mask> element + feDisplacementMap for
+ * torn, organic edges. Unlike CSS mask-image with data: URI (which was
+ * unreliable), SVG <mask> works consistently across all browsers.
  *
- * Result: white rim around photo with IRREGULAR, torn edges — no smooth
- * ellipse, looks like a brush that didn't reach the paper edge cleanly.
+ * The SVG contains:
+ *  - A white rectangle (the paper overlay)
+ *  - A <mask> that defines where the rectangle is visible:
+ *    - Black (hidden) in center → photo shows through
+ *    - White (visible) at edges → white paper visible
+ *    - feDisplacementMap distorts the mask boundary → TORN edges
  *
- * No feDisplacementMap (it created white spots in the center — bug).
- * Pure CSS gradients are 100% reliable across all browsers.
- *
- * Returns null if no watercolor (strength = 0).
+ * The SVG is positioned absolutely over the <img>, stretching to fill.
  */
-export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null {
+export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
   // Per-strength parameters
-  let coreSize: number      // % of radius where photo is fully visible
-  let fadeWidth: number     // % of transition zone width
+  let innerStop: number
+  let outerStop: number
   let opacity: number
-  let jitter: number        // how much offset positions vary (torn edge)
+  let displacement: number
 
   if (strength <= 33) {
-    coreSize = 72
-    fadeWidth = 18
-    opacity = 0.7 + (strength / 33) * 0.2 // 0.7 -> 0.9
-    jitter = 10
+    innerStop = 65
+    outerStop = 82
+    opacity = 0.7 + (strength / 33) * 0.2
+    displacement = 12
   } else if (strength <= 66) {
-    coreSize = 68
-    fadeWidth = 22
-    opacity = 0.8 + ((strength - 33) / 33) * 0.15 // 0.8 -> 0.95
-    jitter = 14
+    innerStop = 62
+    outerStop = 80
+    opacity = 0.8 + ((strength - 33) / 33) * 0.15
+    displacement = 18
   } else {
-    coreSize = 64
-    fadeWidth = 26
-    opacity = 0.9 + ((strength - 66) / 34) * 0.1 // 0.9 -> 1.0
-    jitter = 18
+    innerStop = 58
+    outerStop = 78
+    opacity = 0.9 + ((strength - 66) / 34) * 0.1
+    displacement = 24
   }
 
-  // Use ONLY 3 gradients with LARGE jitter and HARD transition (no fade).
-  // With mask-composite: add (union), overlay is visible where ANY gradient
-  // is opaque. The centered gradient creates the base rim. Two offset
-  // gradients create torn irregularity — their opaque zones extend into
-  // different parts of the rim, making the inner boundary irregular.
-  //
-  // HARD transition (transparent -> black at same stop) prevents alpha
-  // buildup in transition zones that caused white spots in center.
-  const fadeStop = coreSize + fadeWidth
-  const gradients = [
-    // Base centered gradient — creates the main rim
-    `radial-gradient(ellipse 50% 50% at 50% 50%, ` +
-    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
-    // Offset gradient 1 — tears the top-left side
-    `radial-gradient(ellipse 50% 50% at ${50 - jitter}% ${50 - jitter}%, ` +
-    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
-    // Offset gradient 2 — tears the bottom-right side
-    `radial-gradient(ellipse 50% 50% at ${50 + jitter}% ${50 + jitter}%, ` +
-    `transparent ${coreSize}%, black ${fadeStop}%, black 100%)`,
-  ]
+  // Unique IDs for mask and filter (prevents collisions)
+  const uid = `wc${++maskIdCounter}`
+  const maskId = `mask-${uid}`
+  const filterId = `torn-${uid}`
+  const gradId = `grad-${uid}`
 
-  // Combine all gradients — add (union) means overlay is visible where
-  // ANY gradient is opaque (black). The inner boundary of the union is
-  // determined by the smallest/earliest gradient, creating torn edges
-  // because each gradient has a different center/size.
-  const maskValue = gradients.join(', ')
-  const webkitMaskValue = gradients.join(', ')
-
-  return {
-    background: 'rgba(255, 250, 245, 1)',
-    maskImage: maskValue,
-    WebkitMaskImage: webkitMaskValue,
-    maskComposite: 'add',
-    WebkitMaskComposite: 'source-over',
-    maskRepeat: 'no-repeat',
-    WebkitMaskRepeat: 'no-repeat',
-    opacity,
-  }
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      style={{ opacity }}
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="black" />
+          <stop offset={`${innerStop}%`} stopColor="black" />
+          <stop offset={`${outerStop}%`} stopColor="white" />
+          <stop offset="100%" stopColor="white" />
+        </radialGradient>
+        <filter id={filterId} x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.015"
+            numOctaves="3"
+            seed="5"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale={displacement}
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+        <mask id={maskId}>
+          <rect
+            width="100"
+            height="100"
+            fill={`url(#${gradId})`}
+            filter={`url(#${filterId})`}
+          />
+        </mask>
+      </defs>
+      {/* White paper rectangle — visible where mask is white (edges),
+          hidden where mask is black (center) */}
+      <rect
+        width="100"
+        height="100"
+        fill="rgb(255, 250, 245)"
+        mask={`url(#${maskId})`}
+      />
+    </svg>
+  )
 }

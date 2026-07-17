@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RotateCcw, Sparkles, Check, Sun, Contrast, Moon, Thermometer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getWatercolorFilterId, getWatercolorEdgeOverlay } from './watercolor-filters'
+import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
 
 export interface PhotoAdjustments {
   watercolor: number      // 0..100 — сила акварели
@@ -225,15 +225,7 @@ export function PhotoEditor({
                       style={{ filter }}
                     />
                     {/* White paper-edge overlay for watercolor unpainted rim */}
-                    {(() => {
-                      const overlay = getWatercolorEdgeOverlay(adj.watercolor)
-                      return overlay ? (
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={overlay}
-                        />
-                      ) : null
-                    })()}
+                    <WatercolorEdgeOverlay strength={adj.watercolor} />
                   </div>
                 </div>
               </div>
@@ -266,15 +258,7 @@ export function PhotoEditor({
                       style={{ filter }}
                     />
                     {/* White paper-edge overlay */}
-                    {(() => {
-                      const overlay = getWatercolorEdgeOverlay(adj.watercolor)
-                      return overlay ? (
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={overlay}
-                        />
-                      ) : null
-                    })()}
+                    <WatercolorEdgeOverlay strength={adj.watercolor} />
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 text-[10px] uppercase tracking-wider text-primary">
                       Текущий фильтр
                     </span>
