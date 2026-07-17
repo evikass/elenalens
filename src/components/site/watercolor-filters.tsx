@@ -249,27 +249,27 @@ export function getWatercolorFilterId(strength: number): string {
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
-  // Per-strength parameters
-  let innerStop: number
-  let outerStop: number
+  // Per-strength parameters — SHARP transition to prevent white leaking
+  let innerStop: number      // where white STARTS (transition begin)
+  let outerStop: number      // where white is FULLY opaque (transition end)
   let opacity: number
   let displacement: number
 
   if (strength <= 33) {
-    innerStop = 65
-    outerStop = 82
+    innerStop = 88
+    outerStop = 91
     opacity = 0.7 + (strength / 33) * 0.2
-    displacement = 12
+    displacement = 8
   } else if (strength <= 66) {
-    innerStop = 62
-    outerStop = 80
+    innerStop = 84
+    outerStop = 88
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    displacement = 18
+    displacement = 12
   } else {
-    innerStop = 58
-    outerStop = 78
+    innerStop = 80
+    outerStop = 85
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    displacement = 24
+    displacement = 16
   }
 
   // Unique IDs for mask and filter (prevents collisions)
@@ -305,7 +305,16 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
             scale={displacement}
             xChannelSelector="R"
             yChannelSelector="G"
+            result="displaced"
           />
+          {/* Hard threshold — snaps displaced values back to pure black/white.
+              This prevents gray transition pixels from showing white in center. */}
+          <feComponentTransfer in="displaced">
+            <feFuncR type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
+            <feFuncG type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
+            <feFuncB type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
+            <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
+          </feComponentTransfer>
         </filter>
         <mask id={maskId}>
           <rect
