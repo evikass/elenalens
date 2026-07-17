@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, RotateCcw, Sparkles, Check, Sun, Contrast, Moon, Thermometer } from 'lucide-react'
+import { X, RotateCcw, Sparkles, Check, Sun, Contrast, Moon, Thermometer, Brush } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
 
 export interface PhotoAdjustments {
-  watercolor: number      // 0..100 — сила акварели
+  watercolor: number      // 0..100 — сила акварели (растекание краски)
+  unpaint: number         // 0..100 — непрокрас краев (белая бумага у края)
   shadows: number         // 0..100 — вытягивание теней
   exposure: number        // -100..+100 — экспозиция
   warmth: number          // -100..+100 — теплый/холодный
@@ -16,6 +17,7 @@ export interface PhotoAdjustments {
 
 export const defaultAdjustments: PhotoAdjustments = {
   watercolor: 0,
+  unpaint: 0,
   shadows: 0,
   exposure: 0,
   warmth: 0,
@@ -225,7 +227,7 @@ export function PhotoEditor({
                       style={{ filter }}
                     />
                     {/* White paper-edge overlay for watercolor unpainted rim */}
-                    <WatercolorEdgeOverlay strength={adj.watercolor} />
+                    <WatercolorEdgeOverlay strength={adj.unpaint} />
                   </div>
                 </div>
               </div>
@@ -258,7 +260,7 @@ export function PhotoEditor({
                       style={{ filter }}
                     />
                     {/* White paper-edge overlay */}
-                    <WatercolorEdgeOverlay strength={adj.watercolor} />
+                    <WatercolorEdgeOverlay strength={adj.unpaint} />
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 text-[10px] uppercase tracking-wider text-primary">
                       Текущий фильтр
                     </span>
@@ -282,7 +284,7 @@ export function PhotoEditor({
                   <strong>Акварельный эффект</strong>
                 </div>
                 <Slider
-                  label="Сила акварели"
+                  label="Сила акварели (растекание краски)"
                   icon={Sparkles}
                   value={adj.watercolor}
                   min={0}
@@ -290,9 +292,20 @@ export function PhotoEditor({
                   onChange={update('watercolor')}
                   format={(v) => `${v}%`}
                 />
+                <Slider
+                  label="Непрокрас краёв (белая бумага)"
+                  icon={Brush}
+                  value={adj.unpaint}
+                  min={0}
+                  max={100}
+                  onChange={update('unpaint')}
+                  format={(v) => `${v}%`}
+                />
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Применяет комбинацию размытия, увеличения насыщенности и SVG-текстуры
-                  для имитации акварельной живописи.
+                  <strong>Сила акварели</strong> — растекание краски, насыщенность, бумажная текстура.
+                  <br />
+                  <strong>Непрокрас краёв</strong> — мягкая белая бумага у самого края, как будто кисть не достала.
+                  Можно использовать отдельно или вместе.
                 </p>
               </div>
 
@@ -340,9 +353,9 @@ export function PhotoEditor({
               </div>
 
               <div className="text-[11px] text-muted-foreground leading-relaxed">
-                Подсказка: для классической акварели поставьте <strong>Сила акварели 60-80%</strong> и
-                немного уберите контраст (<strong>-15</strong>). Для тёплой осенней атмосферы
-                добавьте <strong>Теплый +20</strong> и <strong>Тени +30</strong>.
+                Подсказка: для классической акварели поставьте <strong>Сила акварели 60-80%</strong> +
+                <strong> Непрокрас 30-50%</strong>. Для лёгкого эффекта — только <strong>Акварель 40%</strong>
+                без непрокраса. Для тёплой осенней атмосферы добавьте <strong>Теплый +20</strong>.
               </div>
             </div>
           </div>

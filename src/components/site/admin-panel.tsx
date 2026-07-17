@@ -317,14 +317,16 @@ export function AdminPanel() {
   const applyAdjustments = (filename: string, a: PhotoAdjustments) => {
     const adjustments = { ...override.adjustments, [filename]: a }
     // Sync legacy watercolor flag (for backwards compat with portfolio.tsx)
-    const watercolor = a.watercolor > 0
+    // Now considers both watercolor AND unpaint as "has filter"
+    const hasFilter = a.watercolor > 0 || a.unpaint > 0
+    const watercolor = hasFilter
       ? [...override.watercolor.filter((f) => f !== filename), filename]
       : override.watercolor.filter((f) => f !== filename)
     persist({ ...override, adjustments, watercolor })
     setEditorFilename(null)
     toast({
-      title: a.watercolor > 0
-        ? `Фильтр применён (акварель ${a.watercolor}%) 🎨`
+      title: hasFilter
+        ? `Фильтр применён${a.watercolor > 0 ? ` (акварель ${a.watercolor}%${a.unpaint > 0 ? `, непрокрас ${a.unpaint}%` : ''})` : ` (непрокрас ${a.unpaint}%)`} 🎨`
         : 'Настройки сохранены',
     })
   }
@@ -512,7 +514,7 @@ export function AdminPanel() {
                     const isHidden = override.hidden.includes(item.filename)
                     const isWc = override.watercolor.includes(item.filename)
                     const adj = override.adjustments[item.filename]
-                    const hasAdj = !!adj && (adj.watercolor > 0 || adj.shadows > 0 || adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0)
+                    const hasAdj = !!adj && (adj.watercolor > 0 || adj.unpaint > 0 || adj.shadows > 0 || adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0)
                     const customTitle =
                       override.titles[item.filename] ?? item.title
                     return (
@@ -542,9 +544,9 @@ export function AdminPanel() {
                               filter: buildFilterString(adj),
                             } : undefined}
                           />
-                          {/* White paper-edge overlay for watercolor */}
-                          {hasAdj && adj && adj.watercolor > 0 && (
-                            <WatercolorEdgeOverlay strength={adj.watercolor} />
+                          {/* White paper-edge overlay for watercolor unpaint */}
+                          {hasAdj && adj && adj.unpaint > 0 && (
+                            <WatercolorEdgeOverlay strength={adj.unpaint} />
                           )}
                           {isWc && (
                             <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] uppercase tracking-wide bg-primary text-primary-foreground rounded-full">

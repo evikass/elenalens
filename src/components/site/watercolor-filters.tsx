@@ -231,80 +231,60 @@ export function getWatercolorFilterId(strength: number): string {
 }
 
 /**
- * React component that renders a white paper-edge overlay with TORN edges.
+ * React component that renders a SOFT white paper-edge overlay.
  *
- * APPROACH: SVG <mask> defines where the white overlay is VISIBLE.
+ * APPROACH: SVG <mask> with radial gradient — soft, subtle unpainted
+ * paper at the very edge of the photo, NOT aggressive torn edges.
  *
- * The mask contains:
- *   - Black background (overlay HIDDEN = photo visible)
- *   - White jittered polygon ring (overlay VISIBLE = white paper)
+ * The mask is a radial gradient:
+ *   - Black (overlay hidden = photo visible) at center 0-85%
+ *   - Smooth transition 85-100% (soft fade)
+ *   - White (overlay visible = white paper) at outer 95-100%
  *
- * The polygon ring is generated as a star-like shape:
- *   - Outer points at the box edges (50% radius, where overlay covers corners)
- *   - Inner points jittered around innerRadius (where photo shows through)
- *   - Alternating outer/inner points create a torn zigzag boundary
+ * This creates a GENTLE white rim that looks like watercolor paper
+ * showing through where the brush didn't quite reach the edge —
+ * not a harsh torn border.
  *
- * The SVG has a white rect covering everything, masked by the ring shape.
- * Where mask is white (ring) → white paper visible.
- * Where mask is black (center + outside box) → photo visible.
+ * The `strength` parameter (0-100) controls:
+ *   - How far the white extends inward (rim width)
+ *   - How opaque the white is
  *
- * Result: photo visible in torn oval center, white paper at edges with
- * torn organic boundary between them.
+ * This is SEPARATE from the watercolor SVG filter (which handles
+ * paint bleeding, saturation, paper grain). User can apply unpaint
+ * independently via the 'unpaint' slider.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
-  // Per-strength parameters
-  let innerRadius: number    // base radius of photo-visible area (0-50)
+  // Per-strength parameters — SOFT, SUBTLE rim
+  // innerStop: where white STARTS (overlay begins to appear)
+  // outerStop: where white is FULLY opaque
+  // opacity: overall overlay opacity
+  let innerStop: number
+  let outerStop: number
   let opacity: number
-  let jitter: number         // radial jitter % for torn effect
-  let points: number         // number of polygon points
 
   if (strength <= 33) {
-    innerRadius = 48
-    opacity = 0.7 + (strength / 33) * 0.2
-    jitter = 6
-    points = 24
+    // Light: very thin rim, only at outer 5%
+    innerStop = 90
+    outerStop = 99
+    opacity = 0.5 + (strength / 33) * 0.2 // 0.5 → 0.7
   } else if (strength <= 66) {
-    innerRadius = 46
-    opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    jitter = 8
-    points = 28
+    // Medium: rim at outer 8%
+    innerStop = 87
+    outerStop = 98
+    opacity = 0.65 + ((strength - 33) / 33) * 0.2 // 0.65 → 0.85
   } else {
-    innerRadius = 44
-    opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    jitter = 10
-    points = 32
-  }
-
-  // Generate jittered polygon points for the INNER boundary (photo area).
-  // Use MULTIPLE harmonics of jitter for more organic, torn look.
-  const holePoints: string[] = []
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * 2 * Math.PI
-    // Combine 3 different pseudo-random seeds for more organic variation
-    const seed1 = ((i * 7919 + 13) % 1000) / 1000
-    const seed2 = ((i * 1597 + 29) % 1000) / 1000
-    const seed3 = ((i * 2741 + 41) % 1000) / 1000
-    // Multi-frequency jitter: large slow variation + small fast variation
-    const jitterValue =
-      (seed1 - 0.5) * 2 * jitter +
-      (seed2 - 0.5) * 2 * jitter * 0.5 +
-      (seed3 - 0.5) * 2 * jitter * 0.25
-    const r = innerRadius + jitterValue
-    const x = 50 + r * Math.cos(angle)
-    const y = 50 + r * Math.sin(angle)
-    holePoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+    // Strong: rim at outer 12%
+    innerStop = 83
+    outerStop = 97
+    opacity = 0.8 + ((strength - 66) / 34) * 0.15 // 0.8 → 0.95
   }
 
   // Unique IDs
   const uid = `wc${++maskIdCounter}`
   const maskId = `mask-${uid}`
-  const filterId = `torn-${uid}`
-
-  // The mask: white background (paper visible) with black jittered polygon
-  // hole in the center (photo visible through the hole).
-  const holePath = `M ${holePoints.join(' L ')} Z`
+  const gradId = `grad-${uid}`
 
   return (
     <svg
@@ -315,34 +295,20 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       aria-hidden="true"
     >
       <defs>
-        {/* Filter adds additional torn texture to the polygon boundary.
-            feTurbulence + feDisplacementMap distorts the edge by noise. */}
-        <filter id={filterId} x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.04"
-            numOctaves="2"
-            seed="7"
-            result="noise"
-          />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale="3"
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
+        {/* Radial gradient: black center (photo visible) → white edge (paper).
+            Smooth transition creates SOFT unpainted rim, not harsh border. */}
+        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="black" />
+          <stop offset={`${innerStop}%`} stopColor="black" />
+          <stop offset={`${outerStop}%`} stopColor="white" />
+          <stop offset="100%" stopColor="white" />
+        </radialGradient>
         <mask id={maskId}>
-          {/* White background = overlay VISIBLE (white paper at edges/corners) */}
-          <rect width="100" height="100" fill="white" />
-          {/* Black jittered polygon = overlay HIDDEN (photo visible in center).
-              Filter adds fine torn texture to the boundary. */}
-          <path d={holePath} fill="black" filter={`url(#${filterId})`} />
+          <rect width="100" height="100" fill={`url(#${gradId})`} />
         </mask>
       </defs>
-      {/* White paper rect — visible everywhere EXCEPT the jittered hole
-          (where photo shows through with torn organic boundary) */}
+      {/* White paper rect — visible at outer rim (soft fade),
+          hidden in center (photo visible) */}
       <rect
         width="100"
         height="100"

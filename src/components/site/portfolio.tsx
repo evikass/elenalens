@@ -137,6 +137,7 @@ const defaultShots: Shot[] = [
 // Allow admin to override order / titles / visibility via localStorage
 interface PhotoAdjustments {
   watercolor: number
+  unpaint: number
   shadows: number
   exposure: number
   warmth: number
@@ -368,7 +369,7 @@ export function Portfolio() {
               const filename = filenameFromSrc(shot.src)
               const adj = override.adjustments[filename]
               const hasAdj = !!adj && (
-                adj.watercolor > 0 || adj.shadows > 0 ||
+                adj.watercolor > 0 || adj.unpaint > 0 || adj.shadows > 0 ||
                 adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0
               )
               const filterStyle = hasAdj && adj
@@ -399,13 +400,17 @@ export function Portfolio() {
                     style={filterStyle}
                   />
                   {/* White paper-edge overlay for watercolor unpainted rim */}
-                  {hasAdj && adj && adj.watercolor > 0 && (
-                    <WatercolorEdgeOverlay strength={adj.watercolor} />
+                  {hasAdj && adj && adj.unpaint > 0 && (
+                    <WatercolorEdgeOverlay strength={adj.unpaint} />
                   )}
                   {/* Watercolor badge */}
-                  {hasAdj && adj && adj.watercolor > 0 && (
+                  {hasAdj && adj && (adj.watercolor > 0 || adj.unpaint > 0) && (
                     <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full bg-background/80 backdrop-blur-sm text-[10px] uppercase tracking-wider text-primary">
-                      Акварель {adj.watercolor}%
+                      {adj.watercolor > 0 && adj.unpaint > 0
+                        ? `Акварель ${adj.watercolor}% · Непрокрас ${adj.unpaint}%`
+                        : adj.watercolor > 0
+                          ? `Акварель ${adj.watercolor}%`
+                          : `Непрокрас ${adj.unpaint}%`}
                     </span>
                   )}
                   {/* Overlay */}
@@ -488,7 +493,7 @@ export function Portfolio() {
                 const currentFilename = filenameFromSrc(currentShot.src)
                 const currentAdj = override.adjustments[currentFilename]
                 const currentHasAdj = !!currentAdj && (
-                  currentAdj.watercolor > 0 || currentAdj.shadows > 0 ||
+                  currentAdj.watercolor > 0 || currentAdj.unpaint > 0 || currentAdj.shadows > 0 ||
                   currentAdj.exposure !== 0 || currentAdj.warmth !== 0 || currentAdj.contrast !== 0
                 )
                 return (
@@ -502,8 +507,8 @@ export function Portfolio() {
                         : undefined}
                     />
                     {/* White paper-edge overlay for watercolor unpainted rim */}
-                    {currentHasAdj && currentAdj && currentAdj.watercolor > 0 && (
-                      <WatercolorEdgeOverlay strength={currentAdj.watercolor} />
+                    {currentHasAdj && currentAdj && currentAdj.unpaint > 0 && (
+                      <WatercolorEdgeOverlay strength={currentAdj.unpaint} />
                     )}
                   </div>
                 )
