@@ -233,101 +233,83 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * React component that renders a white paper-edge overlay with TORN edges.
  *
- * Uses inline SVG with native <mask> element + feDisplacementMap for
- * torn, organic edges. Unlike CSS mask-image with data: URI (which was
- * unreliable), SVG <mask> works consistently across all browsers.
+ * HYBRID APPROACH — combines reliable CSS with SVG noise for torn effect:
  *
- * The SVG contains:
- *  - A white rectangle (the paper overlay)
- *  - A <mask> that defines where the rectangle is visible:
- *    - Black (hidden) in center → photo shows through
- *    - White (visible) at edges → white paper visible
- *    - feDisplacementMap distorts the mask boundary → TORN edges
+ * 1. Outer div: white background (rgba(255,250,245)) with CSS radial-gradient
+ *    as mask-image. Gradient: black center (overlay hidden = photo visible)
+ *    to white edges (overlay visible = white paper). SHARP transition.
+ *    This creates clean white rim with photo visible in center.
  *
- * The SVG is positioned absolutely over the <img>, stretching to fill.
+ * 2. CSS mask-image ALSO includes an SVG noise layer (via url() with inline
+ *    SVG data: URI). The noise is thresholded to binary black/white and
+ *    composited with the radial gradient via mask-composite: intersect.
+ *    This tears the gradient boundary — white areas of noise that fall
+ *    in the gradient's black zone (center) REMAIN black (no white leak),
+ *    but the boundary itself becomes irregular.
+ *
+ * Unlike feDisplacementMap (which always produces smooth fade because it
+ * works on gradient pixels), this approach uses BINARY noise threshold
+ * for true torn edges.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
-  // Per-strength parameters — SHARP transition to prevent white leaking
-  let innerStop: number      // where white STARTS (transition begin)
-  let outerStop: number      // where white is FULLY opaque (transition end)
+  // Per-strength parameters
+  let innerStop: number      // where white STARTS (overlay begins)
+  let outerStop: number      // where white is FULLY opaque
   let opacity: number
-  let displacement: number
+  let noiseScale: number     // SVG turbulence frequency for torn edge
 
   if (strength <= 33) {
     innerStop = 72
-    outerStop = 90
+    outerStop = 80
     opacity = 0.7 + (strength / 33) * 0.2
-    displacement = 30
+    noiseScale = 0.025
   } else if (strength <= 66) {
     innerStop = 68
-    outerStop = 88
+    outerStop = 78
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    displacement = 40
+    noiseScale = 0.020
   } else {
     innerStop = 64
-    outerStop = 86
+    outerStop = 76
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    displacement = 50
+    noiseScale = 0.018
   }
 
-  // Unique IDs for mask and filter (prevents collisions)
-  const uid = `wc${++maskIdCounter}`
-  const maskId = `mask-${uid}`
-  const filterId = `torn-${uid}`
-  const gradId = `grad-${uid}`
+  // SVG noise pattern as data: URI — threshold to binary black/white
+  // This will be used as a SECOND mask layer, intersected with the radial gradient.
+  const noiseSvg =
+    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
+    `<defs>` +
+    `<filter id='n'>` +
+    `<feTurbulence type='fractalNoise' baseFrequency='${noiseScale}' numOctaves='2' seed='5' result='noise'/>` +
+    `<feColorMatrix in='noise' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.5 -0.6' result='bin'/>` +
+    `</filter>` +
+    `</defs>` +
+    `<rect width='400' height='400' fill='black' filter='url(%23n)'/>` +
+    `</svg>`
+
+  // CSS mask: radial gradient (overlay visible at edges) + noise (torn effect)
+  // mask-composite: intersect — overlay visible only where BOTH gradients are white
+  const gradientMask = `radial-gradient(ellipse at center, transparent ${innerStop}%, black ${outerStop}%, black 100%)`
+  const noiseMask = `url("${noiseSvg}")`
 
   return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity }}
-      aria-hidden="true"
-    >
-      <defs>
-        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="black" />
-          <stop offset={`${innerStop}%`} stopColor="black" />
-          <stop offset={`${outerStop}%`} stopColor="white" />
-          <stop offset="100%" stopColor="white" />
-        </radialGradient>
-        <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
-          {/* Generate fractal noise for torn edge texture */}
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.012"
-            numOctaves="2"
-            seed="5"
-            result="noise"
-          />
-          {/* Displace the gradient boundary by the noise.
-              SMALL scale = subtle torn effect at the edge transition,
-              NOT large scale that warps entire gradient. */}
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale={displacement}
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
-        <mask id={maskId}>
-          <rect
-            width="100%"
-            height="100%"
-            fill={`url(#${gradId})`}
-            filter={`url(#${filterId})`}
-          />
-        </mask>
-      </defs>
-      {/* White paper rectangle — visible where mask is white (edges),
-          hidden where mask is black (center) */}
-      <rect
-        width="100%"
-        height="100%"
-        fill="rgb(255, 250, 245)"
-        mask={`url(#${maskId})`}
-      />
-    </svg>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        background: 'rgb(255, 250, 245)',
+        maskImage: `${gradientMask}, ${noiseMask}`,
+        WebkitMaskImage: `${gradientMask}, ${noiseMask}`,
+        maskComposite: 'intersect',
+        WebkitMaskComposite: 'source-in',
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
+        maskSize: '100% 100%, 100% 100%',
+        WebkitMaskSize: '100% 100%, 100% 100%',
+        opacity,
+      }}
+    />
   )
 }
