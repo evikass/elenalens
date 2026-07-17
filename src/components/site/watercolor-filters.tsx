@@ -256,20 +256,20 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let displacement: number
 
   if (strength <= 33) {
-    innerStop = 88
-    outerStop = 91
-    opacity = 0.7 + (strength / 33) * 0.2
-    displacement = 8
-  } else if (strength <= 66) {
-    innerStop = 84
+    innerStop = 87
     outerStop = 88
-    opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    displacement = 12
-  } else {
-    innerStop = 80
+    opacity = 0.7 + (strength / 33) * 0.2
+    displacement = 15
+  } else if (strength <= 66) {
+    innerStop = 83
     outerStop = 85
+    opacity = 0.8 + ((strength - 33) / 33) * 0.15
+    displacement = 20
+  } else {
+    innerStop = 78
+    outerStop = 81
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    displacement = 16
+    displacement = 28
   }
 
   // Unique IDs for mask and filter (prevents collisions)
@@ -294,7 +294,7 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
         <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.02"
+            baseFrequency="0.015"
             numOctaves="3"
             seed="5"
             result="noise"
@@ -305,16 +305,7 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
             scale={displacement}
             xChannelSelector="R"
             yChannelSelector="G"
-            result="displaced"
           />
-          {/* Hard threshold — snaps displaced values back to pure black/white.
-              This prevents gray transition pixels from showing white in center. */}
-          <feComponentTransfer in="displaced">
-            <feFuncR type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
-            <feFuncG type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
-            <feFuncB type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
-            <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 1" />
-          </feComponentTransfer>
         </filter>
         <mask id={maskId}>
           <rect
