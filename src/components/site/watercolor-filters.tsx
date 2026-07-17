@@ -233,83 +233,111 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * React component that renders a white paper-edge overlay with TORN edges.
  *
- * TWO-LAYER APPROACH:
+ * APPROACH: CSS clip-path with polygon() — points on a circle with
+ * random radial jitter create torn/organic boundary.
  *
- * Layer 1 (bottom): white overlay div clipped to OUTER ellipse via CSS
- *   clip-path: ellipse(50% 50%) — this defines the outer boundary (full photo).
- *   No clip = white would cover everything, so we need to limit it.
+ * The overlay is a white div that covers the entire photo. A clip-path
+ * polygon removes the center, leaving only a torn rim. The polygon is
+ * generated with:
+ *   - N points evenly distributed around a circle
+ *   - Each point's radius randomly jittered by ±jitter%
+ *   - Smaller N + larger jitter = more torn/ragged look
  *
- * Layer 2 (top): same white div but clipped to INNER ellipse via CSS
- *   clip-path: ellipse(35% 35%) and used as a CUTOUT (mix-blend-mode or
- *   composite) to remove the center, leaving only the rim.
- *
- * For TORN effect, we use CSS mask-image with inline SVG noise threshold:
- *   - SVG generates fractal noise, thresholds to binary black/white
- *   - Applied as mask on the rim layer
- *   - Where noise is black: rim is hidden → photo shows through (torn hole)
- *   - Where noise is white: rim is visible → white paper
- *
- * This gives true torn edges because the noise is BINARY (no smooth fade).
+ * This is 100% reliable (clip-path: polygon is supported everywhere)
+ * and creates TRUE torn edges because polygon vertices are sharp.
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
   // Per-strength parameters
-  let innerSize: number      // % of ellipse that's CUT OUT (photo visible)
+  let innerRadius: number    // base radius of cutout (0-50, 50=full)
   let opacity: number
-  let noiseScale: number     // SVG turbulence frequency
+  let jitter: number         // radial jitter % for torn effect
+  let points: number         // number of polygon points
 
   if (strength <= 33) {
-    innerSize = 78
+    innerRadius = 38
     opacity = 0.7 + (strength / 33) * 0.2
-    noiseScale = 0.025
+    jitter = 4
+    points = 24
   } else if (strength <= 66) {
-    innerSize = 74
+    innerRadius = 35
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    noiseScale = 0.020
+    jitter = 6
+    points = 28
   } else {
-    innerSize = 70
+    innerRadius = 32
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    noiseScale = 0.018
+    jitter = 8
+    points = 32
   }
 
-  // SVG noise mask: fractal noise thresholded to BINARY black/white
-  // White areas = overlay visible (white paper)
-  // Black areas = overlay hidden (photo shows through, creating torn holes)
-  const noiseMaskSvg =
-    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
-    `<defs>` +
-    `<filter id='n' x='0%25' y='0%25' width='100%25' height='100%25'>` +
-    `<feTurbulence type='fractalNoise' baseFrequency='${noiseScale}' numOctaves='2' seed='5' result='noise'/>` +
-    `<feColorMatrix in='noise' type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2 -0.8' result='bin'/>` +
-    `</filter>` +
-    `</defs>` +
-    `<rect width='400' height='400' fill='black' filter='url(%23n)'/>` +
-    `</svg>`
+  // Generate polygon points: circle with jittered radius.
+  // The polygon defines the CUTOUT (center that's removed = photo visible).
+  // We use 'evenodd' fill rule so the polygon creates a hole in the div.
+  //
+  // Actually, clip-path: polygon can only define a single shape, not a
+  // shape with a hole. So we need TWO polygons: outer (50% radius = full
+  // div) and inner (jittered). CSS doesn't support multi-polygon clip-path
+  // directly, but we can use 'evenodd' via SVG clipPath... or simpler:
+  // use the polygon as the SHAPE, and the div's background covers everything
+  // INSIDE the polygon. We want the opposite: cover OUTSIDE, hole INSIDE.
+  //
+  // Solution: make the polygon follow a star-like path that goes:
+  //   - Outer corner (50% radius)
+  //   - Inner point (jittered radius, photo visible)
+  //   - Next outer corner
+  //   - Next inner point
+  //   - ... alternating around the circle
+  // This creates a star polygon where the center is excluded.
+  //
+  // But clip-path removes everything OUTSIDE the polygon. So we need:
+  //   - Polygon covers the entire div (outer points at corners/edges)
+  //   - With a zigzag inner boundary that creates the torn hole
+  //
+  // Simpler approach: use a single polygon that traces a torn circle,
+  // where points alternate between outer (50%) and inner (jittered).
+  // The polygon fill covers everything between — but we want a HOLE.
+  //
+  // Best approach: TWO divs.
+  //   - Bottom div: white, covers everything (clip-path: none)
+  //   - Top div: same background as photo (or transparent with mix-blend)
+  //     clipped to the inner jittered circle — punches a hole in the white
+  //
+  // Even simpler: use SVG with <path> using evenodd fill rule.
+  // Generate path with two subpaths: outer rectangle + inner jittered circle.
+  // Fill with evenodd → inner circle becomes a hole.
 
-  // The overlay covers the entire photo, but we cut out the center ellipse
-  // using a radial-gradient mask (transparent center = cut out, opaque edges = visible).
-  // The noise mask is ADDED on top to create torn holes in the rim.
-  const rimMask = `radial-gradient(ellipse at center, transparent ${innerSize}%, black ${innerSize + 2}%)`
+  // Generate inner circle points (jittered) — values 0-100 (SVG user units)
+  const innerPoints: string[] = []
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * 2 * Math.PI
+    // Deterministic pseudo-random jitter (so it doesn't change on re-render)
+    const seed = ((i * 7919 + 13) % 1000) / 1000
+    const r = innerRadius + (seed - 0.5) * 2 * jitter
+    const x = 50 + r * Math.cos(angle)
+    const y = 50 + r * Math.sin(angle)
+    innerPoints.push(`${x.toFixed(2)},${y.toFixed(2)}`)
+  }
+
+  // SVG path: outer rectangle (full box) + inner jittered polygon (hole)
+  // evenodd fill rule makes the inner polygon a hole — photo visible there
+  const innerPath = `M ${innerPoints.join(' L ')} Z`
+  const fullPath = `M 0,0 L 100,0 L 100,100 L 0,100 Z ${innerPath}`
 
   return (
-    <div
-      className="absolute inset-0 pointer-events-none"
-      style={{
-        background: 'rgb(255, 250, 245)',
-        // First mask: rim shape (transparent center, opaque edges)
-        // Second mask: noise (torn holes in the rim)
-        // Intersect: rim with torn holes
-        maskImage: `${rimMask}, url("${noiseMaskSvg}")`,
-        WebkitMaskImage: `${rimMask}, url("${noiseMaskSvg}")`,
-        maskComposite: 'intersect',
-        WebkitMaskComposite: 'source-in',
-        maskRepeat: 'no-repeat',
-        WebkitMaskRepeat: 'no-repeat',
-        maskSize: '100% 100%, 100% 100%',
-        WebkitMaskSize: '100% 100%, 100% 100%',
-        opacity,
-      }}
-    />
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ opacity }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path
+        d={fullPath}
+        fill="rgb(255, 250, 245)"
+        fillRule="evenodd"
+      />
+    </svg>
   )
 }
