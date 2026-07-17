@@ -292,20 +292,25 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
           <stop offset="100%" stopColor="white" />
         </radialGradient>
         <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
+          {/* Generate fractal noise — this will become the torn mask directly */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.015"
-            numOctaves="3"
+            baseFrequency="0.008"
+            numOctaves="2"
             seed="5"
             result="noise"
           />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale={displacement}
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
+          {/* Threshold the noise into a binary mask: values above 0.5 → white,
+              below → black. This creates RAGGED organic shapes, not smooth gradient. */}
+          <feComponentTransfer in="noise" result="thresholded">
+            <feFuncR type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
+            <feFuncG type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
+            <feFuncB type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
+            <feFuncA type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
+          </feComponentTransfer>
+          {/* Composite: keep thresholded noise ONLY where original gradient
+              was white (edges). Center stays black (photo visible). */}
+          <feComposite in="thresholded" in2="SourceGraphic" operator="in" />
         </filter>
         <mask id={maskId}>
           <rect
