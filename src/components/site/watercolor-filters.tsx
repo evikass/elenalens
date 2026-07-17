@@ -229,95 +229,85 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * Get CSS background style for white paper-edge overlay with TORN edges.
  *
- * The overlay is a div with:
- *  - background: warm white (paper color)
- *  - mask-image: inline SVG with radial gradient + feTurbulence +
- *    feDisplacementMap — the gradient creates the "unpainted at edges"
- *    shape, and the displacement makes the edges IRREGULAR/torn,
- *    like a real brush couldn't reach the paper edge cleanly.
+ * APPROACH: Layered radial-gradients with RANDOM OFFSET centers.
+ * Each gradient is a small ellipse of "transparent" (center) → "white" (edge)
+ * placed at a slightly off-center position. Combined via CSS mask-image
+ * with mask-composite: subtract — we SUBTRACT the transparent holes
+ * (where photo shows) from a fully white overlay.
  *
- * The mask is white at center (overlay hidden = photo visible) and
- * black at edges (overlay visible = white paper showing). The transition
- * zone is displaced by fractal noise, creating torn, organic edges
- * instead of a smooth ellipse.
+ * Result: white rim around photo with IRREGULAR, torn edges — no smooth
+ * ellipse, looks like a brush that didn't reach the paper edge cleanly.
+ *
+ * No feDisplacementMap (it created white spots in the center — bug).
+ * Pure CSS gradients are 100% reliable across all browsers.
  *
  * Returns null if no watercolor (strength = 0).
- *
- * Usage in JSX:
- *   {adj.watercolor > 0 && (
- *     <div
- *       className="absolute inset-0 pointer-events-none rounded-sm"
- *       style={getWatercolorEdgeOverlay(adj.watercolor)}
- *     />
- *   )}
  */
 export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null {
   if (strength <= 0) return null
 
-  // Configure per-strength parameters
-  let innerStop: number // where white starts (transition begin)
-  let outerStop: number // where white is fully opaque
+  // Per-strength parameters
+  let coreSize: number      // % of radius where photo is fully visible
+  let fadeWidth: number     // % of transition zone width
   let opacity: number
-  let displacement: number // how much the edge is distorted (torn)
+  let jitter: number        // how much offset positions vary (torn edge)
 
   if (strength <= 33) {
-    innerStop = 75
-    outerStop = 92
+    coreSize = 72
+    fadeWidth = 18
     opacity = 0.7 + (strength / 33) * 0.2 // 0.7 -> 0.9
-    displacement = 12
+    jitter = 6
   } else if (strength <= 66) {
-    innerStop = 72
-    outerStop = 90
+    coreSize = 68
+    fadeWidth = 22
     opacity = 0.8 + ((strength - 33) / 33) * 0.15 // 0.8 -> 0.95
-    displacement = 18
+    jitter = 9
   } else {
-    innerStop = 68
-    outerStop = 88
+    coreSize = 64
+    fadeWidth = 26
     opacity = 0.9 + ((strength - 66) / 34) * 0.1 // 0.9 -> 1.0
-    displacement = 24
+    jitter = 12
   }
 
-  // Inline SVG mask: radial gradient (black center -> white edges)
-  // with feTurbulence + feDisplacementMap for torn, organic edges.
-  //
-  // KEY TRICK: To prevent displacement from creating white spots in the
-  // center (the bug), we use feComponentTransfer with a hard threshold
-  // AFTER displacement. The displacement distorts the gradient transition
-  // zone, then the threshold snaps values back to pure black or pure
-  // white — eliminating gray中间 areas that would let white show through.
-  //
-  // Encoding: '#' -> %23, '%' in stop offsets -> %25, single quotes inside.
-  const maskSvg =
-    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
-    `<defs>` +
-    `<radialGradient id='r' cx='50%25' cy='50%25' r='50%25'>` +
-    `<stop offset='0%25' stop-color='black'/>` +
-    `<stop offset='${innerStop}%25' stop-color='black'/>` +
-    `<stop offset='${outerStop}%25' stop-color='white'/>` +
-    `<stop offset='100%25' stop-color='white'/>` +
-    `</radialGradient>` +
-    `<filter id='t'>` +
-    `<feTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='2' seed='5' result='noise'/>` +
-    `<feDisplacementMap in='SourceGraphic' in2='noise' scale='${displacement}' xChannelSelector='R' yChannelSelector='G' result='displaced'/>` +
-    // Snap back to clean black/white — eliminates gray transition areas
-    // that would otherwise show white spots in the photo center.
-    `<feComponentTransfer in='displaced'>` +
-    `<feFuncR type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
-    `<feFuncG type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
-    `<feFuncB type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
-    `<feFuncA type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
-    `</feComponentTransfer>` +
-    `</filter>` +
-    `</defs>` +
-    `<rect width='400' height='400' fill='url(%23r)' filter='url(%23t)'/>` +
-    `</svg>`
+  // Generate 8 radial gradients with slightly offset centers and
+  // varying sizes. Combined with mask-composite: intersect, the
+  // intersection of all "transparent" zones creates the photo area.
+  // The varying centers create torn/irregular boundary.
+  const gradients: string[] = []
+  const positions = [
+    { x: 50, y: 50, r: 1.00 },
+    { x: 50 - jitter, y: 50 - jitter, r: 0.96 },
+    { x: 50 + jitter, y: 50 - jitter, r: 0.98 },
+    { x: 50 - jitter, y: 50 + jitter, r: 0.97 },
+    { x: 50 + jitter, y: 50 + jitter, r: 0.95 },
+    { x: 50, y: 50 - jitter * 1.5, r: 0.94 },
+    { x: 50, y: 50 + jitter * 1.5, r: 0.99 },
+    { x: 50 - jitter * 1.5, y: 50, r: 0.93 },
+    { x: 50 + jitter * 1.5, y: 50, r: 0.96 },
+    { x: 50 - jitter * 0.7, y: 50 + jitter * 0.7, r: 0.99 },
+  ]
+
+  for (const p of positions) {
+    const innerStop = coreSize * p.r
+    const outerStop = (coreSize + fadeWidth) * p.r
+    gradients.push(
+      `radial-gradient(ellipse ${(p.r * 100).toFixed(0)}% ${(p.r * 100).toFixed(0)}% at ${p.x}% ${p.y}%, ` +
+      `transparent 0%, transparent ${innerStop.toFixed(0)}%, ` +
+      `black ${outerStop.toFixed(0)}%, black 100%)`
+    )
+  }
+
+  // Combine all gradients — intersect means photo is visible only where
+  // ALL gradients are transparent. Any gradient being black = white rim there.
+  const maskValue = gradients.join(', ')
+  const webkitMaskValue = gradients.join(', ')
 
   return {
     background: 'rgba(255, 250, 245, 1)',
-    maskImage: `url("${maskSvg}")`,
-    WebkitMaskImage: `url("${maskSvg}")`,
-    maskSize: '100% 100%',
-    WebkitMaskSize: '100% 100%',
+    maskImage: maskValue,
+    WebkitMaskImage: webkitMaskValue,
+    maskComposite: 'intersect',
+    WebkitMaskComposite: 'source-in',
     maskRepeat: 'no-repeat',
     WebkitMaskRepeat: 'no-repeat',
     opacity,
