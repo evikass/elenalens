@@ -256,20 +256,20 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let displacement: number
 
   if (strength <= 33) {
-    innerStop = 87
-    outerStop = 88
+    innerStop = 72
+    outerStop = 90
     opacity = 0.7 + (strength / 33) * 0.2
-    displacement = 15
+    displacement = 30
   } else if (strength <= 66) {
-    innerStop = 83
-    outerStop = 85
+    innerStop = 68
+    outerStop = 88
     opacity = 0.8 + ((strength - 33) / 33) * 0.15
-    displacement = 20
+    displacement = 40
   } else {
-    innerStop = 78
-    outerStop = 81
+    innerStop = 64
+    outerStop = 86
     opacity = 0.9 + ((strength - 66) / 34) * 0.1
-    displacement = 28
+    displacement = 50
   }
 
   // Unique IDs for mask and filter (prevents collisions)
@@ -292,25 +292,24 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
           <stop offset="100%" stopColor="white" />
         </radialGradient>
         <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
-          {/* Generate fractal noise — this will become the torn mask directly */}
+          {/* Generate fractal noise for torn edge texture */}
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.008"
+            baseFrequency="0.012"
             numOctaves="2"
             seed="5"
             result="noise"
           />
-          {/* Threshold the noise into a binary mask: values above 0.5 → white,
-              below → black. This creates RAGGED organic shapes, not smooth gradient. */}
-          <feComponentTransfer in="noise" result="thresholded">
-            <feFuncR type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
-            <feFuncG type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
-            <feFuncB type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
-            <feFuncA type="discrete" tableValues="0 0 0 0 0 1 1 1 1 1" />
-          </feComponentTransfer>
-          {/* Composite: keep thresholded noise ONLY where original gradient
-              was white (edges). Center stays black (photo visible). */}
-          <feComposite in="thresholded" in2="SourceGraphic" operator="in" />
+          {/* Displace the gradient boundary by the noise.
+              SMALL scale = subtle torn effect at the edge transition,
+              NOT large scale that warps entire gradient. */}
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale={displacement}
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
         </filter>
         <mask id={maskId}>
           <rect
