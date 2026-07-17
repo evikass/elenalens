@@ -264,21 +264,28 @@ export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null
     innerStop = 75
     outerStop = 92
     opacity = 0.7 + (strength / 33) * 0.2 // 0.7 -> 0.9
-    displacement = 18
+    displacement = 12
   } else if (strength <= 66) {
     innerStop = 72
     outerStop = 90
     opacity = 0.8 + ((strength - 33) / 33) * 0.15 // 0.8 -> 0.95
-    displacement = 28
+    displacement = 18
   } else {
     innerStop = 68
     outerStop = 88
     opacity = 0.9 + ((strength - 66) / 34) * 0.1 // 0.9 -> 1.0
-    displacement = 40
+    displacement = 24
   }
 
   // Inline SVG mask: radial gradient (black center -> white edges)
   // with feTurbulence + feDisplacementMap for torn, organic edges.
+  //
+  // KEY TRICK: To prevent displacement from creating white spots in the
+  // center (the bug), we use feComponentTransfer with a hard threshold
+  // AFTER displacement. The displacement distorts the gradient transition
+  // zone, then the threshold snaps values back to pure black or pure
+  // white — eliminating gray中间 areas that would let white show through.
+  //
   // Encoding: '#' -> %23, '%' in stop offsets -> %25, single quotes inside.
   const maskSvg =
     `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
@@ -290,8 +297,16 @@ export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null
     `<stop offset='100%25' stop-color='white'/>` +
     `</radialGradient>` +
     `<filter id='t'>` +
-    `<feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='2' seed='5' result='noise'/>` +
-    `<feDisplacementMap in='SourceGraphic' in2='noise' scale='${displacement}' xChannelSelector='R' yChannelSelector='G'/>` +
+    `<feTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='2' seed='5' result='noise'/>` +
+    `<feDisplacementMap in='SourceGraphic' in2='noise' scale='${displacement}' xChannelSelector='R' yChannelSelector='G' result='displaced'/>` +
+    // Snap back to clean black/white — eliminates gray transition areas
+    // that would otherwise show white spots in the photo center.
+    `<feComponentTransfer in='displaced'>` +
+    `<feFuncR type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
+    `<feFuncG type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
+    `<feFuncB type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
+    `<feFuncA type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/>` +
+    `</feComponentTransfer>` +
     `</filter>` +
     `</defs>` +
     `<rect width='400' height='400' fill='url(%23r)' filter='url(%23t)'/>` +
