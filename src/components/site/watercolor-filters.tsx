@@ -269,36 +269,34 @@ export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null
     jitter = 12
   }
 
-  // Generate 8 radial gradients with slightly offset centers and
-  // varying sizes. Combined with mask-composite: intersect, the
-  // intersection of all "transparent" zones creates the photo area.
-  // The varying centers create torn/irregular boundary.
+  // Generate radial gradients with offset centers but SAME size.
+  // All gradients are 'ellipse 50% 50%' (reaches box edges).
+  // Different centers create torn/irregular boundary when combined with 'add'.
   const gradients: string[] = []
   const positions = [
-    { x: 50, y: 50, r: 1.00 },
-    { x: 50 - jitter, y: 50 - jitter, r: 0.96 },
-    { x: 50 + jitter, y: 50 - jitter, r: 0.98 },
-    { x: 50 - jitter, y: 50 + jitter, r: 0.97 },
-    { x: 50 + jitter, y: 50 + jitter, r: 0.95 },
-    { x: 50, y: 50 - jitter * 1.5, r: 0.94 },
-    { x: 50, y: 50 + jitter * 1.5, r: 0.99 },
-    { x: 50 - jitter * 1.5, y: 50, r: 0.93 },
-    { x: 50 + jitter * 1.5, y: 50, r: 0.96 },
-    { x: 50 - jitter * 0.7, y: 50 + jitter * 0.7, r: 0.99 },
+    { x: 50, y: 50 },
+    { x: 50 - jitter, y: 50 - jitter },
+    { x: 50 + jitter, y: 50 - jitter },
+    { x: 50 - jitter, y: 50 + jitter },
+    { x: 50 + jitter, y: 50 + jitter },
+    { x: 50, y: 50 - jitter * 1.5 },
+    { x: 50, y: 50 + jitter * 1.5 },
+    { x: 50 - jitter * 1.5, y: 50 },
+    { x: 50 + jitter * 1.5, y: 50 },
   ]
 
   for (const p of positions) {
-    const innerStop = coreSize * p.r
-    const outerStop = (coreSize + fadeWidth) * p.r
     gradients.push(
-      `radial-gradient(ellipse ${(p.r * 100).toFixed(0)}% ${(p.r * 100).toFixed(0)}% at ${p.x}% ${p.y}%, ` +
-      `transparent 0%, transparent ${innerStop.toFixed(0)}%, ` +
-      `black ${outerStop.toFixed(0)}%, black 100%)`
+      `radial-gradient(ellipse 50% 50% at ${p.x}% ${p.y}%, ` +
+      `transparent 0%, transparent ${coreSize}%, ` +
+      `black ${(coreSize + fadeWidth)}%, black 100%)`
     )
   }
 
-  // Combine all gradients — intersect means photo is visible only where
-  // ALL gradients are transparent. Any gradient being black = white rim there.
+  // Combine all gradients — add (union) means overlay is visible where
+  // ANY gradient is opaque (black). The inner boundary of the union is
+  // determined by the smallest/earliest gradient, creating torn edges
+  // because each gradient has a different center/size.
   const maskValue = gradients.join(', ')
   const webkitMaskValue = gradients.join(', ')
 
@@ -306,8 +304,8 @@ export function getWatercolorEdgeOverlay(strength: number): CSSProperties | null
     background: 'rgba(255, 250, 245, 1)',
     maskImage: maskValue,
     WebkitMaskImage: webkitMaskValue,
-    maskComposite: 'intersect',
-    WebkitMaskComposite: 'source-in',
+    maskComposite: 'add',
+    WebkitMaskComposite: 'source-over',
     maskRepeat: 'no-repeat',
     WebkitMaskRepeat: 'no-repeat',
     opacity,
