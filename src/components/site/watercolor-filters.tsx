@@ -281,8 +281,6 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   return (
     <svg
       className="absolute inset-0 w-full h-full pointer-events-none"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
       style={{ opacity }}
       aria-hidden="true"
     >
@@ -293,10 +291,10 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
           <stop offset={`${outerStop}%`} stopColor="white" />
           <stop offset="100%" stopColor="white" />
         </radialGradient>
-        <filter id={filterId} x="-10%" y="-10%" width="120%" height="120%">
+        <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.015"
+            baseFrequency="0.02"
             numOctaves="3"
             seed="5"
             result="noise"
@@ -311,8 +309,8 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
         </filter>
         <mask id={maskId}>
           <rect
-            width="100"
-            height="100"
+            width="100%"
+            height="100%"
             fill={`url(#${gradId})`}
             filter={`url(#${filterId})`}
           />
@@ -321,8 +319,8 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       {/* White paper rectangle — visible where mask is white (edges),
           hidden where mask is black (center) */}
       <rect
-        width="100"
-        height="100"
+        width="100%"
+        height="100%"
         fill="rgb(255, 250, 245)"
         mask={`url(#${maskId})`}
       />
