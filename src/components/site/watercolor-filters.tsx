@@ -263,23 +263,23 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let displacement: number   // torn edge distortion amount
 
   if (strength <= 33) {
-    // Light: 5% rim, subtle torn
-    innerStop = 94
-    outerStop = 99
-    opacity = 0.55 + (strength / 33) * 0.15 // 0.55 → 0.70
-    displacement = 8
-  } else if (strength <= 66) {
-    // Medium: 4% rim, more visible torn
-    innerStop = 95
-    outerStop = 99
-    opacity = 0.7 + ((strength - 33) / 33) * 0.15 // 0.70 → 0.85
-    displacement = 12
-  } else {
-    // Strong: 3% rim (very thin), prominent torn
-    innerStop = 96
+    // Light: very thin rim (2% = ~1mm), subtle
+    innerStop = 97
     outerStop = 99.5
-    opacity = 0.8 + ((strength - 66) / 34) * 0.15 // 0.80 → 0.95
-    displacement = 16
+    opacity = 0.3 + (strength / 33) * 0.15 // 0.30 → 0.45
+    displacement = 1.5
+  } else if (strength <= 66) {
+    // Medium: 1.5% rim, more visible
+    innerStop = 98
+    outerStop = 99.7
+    opacity = 0.4 + ((strength - 33) / 33) * 0.15 // 0.40 → 0.55
+    displacement = 2
+  } else {
+    // Strong: 1% rim (very thin), prominent
+    innerStop = 98.5
+    outerStop = 99.8
+    opacity = 0.5 + ((strength - 66) / 34) * 0.15 // 0.50 → 0.65
+    displacement = 2.5
   }
 
   // Unique IDs
@@ -292,13 +292,13 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
     <svg
       className="absolute inset-0 w-full h-full pointer-events-none"
       style={{ opacity }}
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
       aria-hidden="true"
     >
       <defs>
-        {/* Radial gradient with NARROW transition (3-5% of width).
-            Black center (photo visible) → white edge (paper visible). */}
+        {/* Radial gradient with VERY NARROW transition (1-2% of width).
+            Black center (photo visible) → white edge (paper visible).
+            No viewBox/preserveAspectRatio — uses pixel coords directly
+            so displacement is uniform regardless of aspect ratio. */}
         <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="black" />
           <stop offset={`${innerStop}%`} stopColor="black" />
@@ -307,7 +307,7 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
         </radialGradient>
         {/* feDisplacementMap distorts the gradient boundary by fractal
             noise, creating IRREGULAR TORN edge (not smooth oval).
-            Small displacement = subtle jaggedness, not aggressive star. */}
+            Small displacement (1.5-2.5) = subtle jaggedness. */}
         <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
           <feTurbulence
             type="fractalNoise"
@@ -326,19 +326,19 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
         </filter>
         <mask id={maskId}>
           <rect
-            width="100"
-            height="100"
+            width="100%"
+            height="100%"
             fill={`url(#${gradId})`}
             filter={`url(#${filterId})`}
           />
         </mask>
       </defs>
-      {/* White paper rect — visible at thin torn rim (outer 3-5%),
-          hidden in center (photo visible) */}
+      {/* Soft warm white paper — NOT pure white, looks like real watercolor paper.
+          Visible only at thin torn rim (outer 1-2%), hidden in center. */}
       <rect
-        width="100"
-        height="100"
-        fill="rgb(255, 250, 245)"
+        width="100%"
+        height="100%"
+        fill="rgb(250, 245, 235)"
         mask={`url(#${maskId})`}
       />
     </svg>
