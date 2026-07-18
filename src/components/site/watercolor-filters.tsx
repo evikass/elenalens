@@ -231,116 +231,87 @@ export function getWatercolorFilterId(strength: number): string {
 }
 
 /**
- * React component that renders a THIN TORN white paper-edge overlay.
+ * React component that renders a THIN TORN paper-edge overlay.
  *
- * APPROACH: SVG <mask> with radial gradient + feDisplacementMap.
+ * APPROACH: CSS mask-image with two layers:
+ *   1. Radial gradient — defines thin rim shape (1-2% at edge)
+ *   2. SVG noise threshold — creates torn/irregular boundary
+ *   Intersected via mask-composite: intersect
  *
- * The mask is a radial gradient with VERY NARROW transition zone
- * (only 3-5% of photo width = 2-5mm at edge), then feDisplacementMap
- * distorts the gradient boundary by fractal noise — creating
- * IRREGULAR, TORN edge (not smooth oval, not aggressive star).
- *
- * The result: thin white rim at the very edge of the photo with
- * jagged/torn inner boundary, like watercolor paper where the brush
- * didn't quite reach — subtle but with organic irregular edge.
+ * Color is warm beige (not pure white) at low opacity — looks like
+ * subtle watercolor paper edge, not stark white frame.
  *
  * Parameters (strength 0-100):
- *   - innerStop: where white starts (e.g. 95% = rim begins at 95%)
- *   - outerStop: where white is fully opaque (e.g. 99%)
- *   - displacement: how much the boundary is distorted (torn effect)
- *   - opacity: overall overlay opacity
- *
- * The rim is always THIN (3-5% of photo width = 2-5mm), regardless
- * of strength. Strength only controls opacity + displacement amount.
+ *   - innerStop: where rim begins (96-99%)
+ *   - outerStop: where rim is fully visible (99.5-100%)
+ *   - opacity: 0.2-0.5 (subtle, not stark white)
+ *   - noiseScale: SVG turbulence frequency for torn edge
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
-  // Per-strength parameters — THIN rim (3-5%) with TORN edge
-  let innerStop: number      // where white STARTS (rim begins)
-  let outerStop: number      // where white is FULLY opaque
+  // Per-strength parameters — VERY THIN rim (1-2%) with TORN edge
+  let innerStop: number
+  let outerStop: number
   let opacity: number
-  let displacement: number   // torn edge distortion amount
+  let noiseScale: number
 
   if (strength <= 33) {
-    // Light: very thin rim (2% = ~1mm), subtle
+    // Light: 2% rim, very subtle
     innerStop = 97
     outerStop = 99.5
-    opacity = 0.3 + (strength / 33) * 0.15 // 0.30 → 0.45
-    displacement = 1.5
+    opacity = 0.2 + (strength / 33) * 0.1 // 0.20 → 0.30
+    noiseScale = 0.030
   } else if (strength <= 66) {
     // Medium: 1.5% rim, more visible
     innerStop = 98
     outerStop = 99.7
-    opacity = 0.4 + ((strength - 33) / 33) * 0.15 // 0.40 → 0.55
-    displacement = 2
+    opacity = 0.3 + ((strength - 33) / 33) * 0.1 // 0.30 → 0.40
+    noiseScale = 0.025
   } else {
-    // Strong: 1% rim (very thin), prominent
+    // Strong: 1% rim, prominent
     innerStop = 98.5
     outerStop = 99.8
-    opacity = 0.5 + ((strength - 66) / 34) * 0.15 // 0.50 → 0.65
-    displacement = 2.5
+    opacity = 0.4 + ((strength - 66) / 34) * 0.1 // 0.40 → 0.50
+    noiseScale = 0.020
   }
 
-  // Unique IDs
-  const uid = `wc${++maskIdCounter}`
-  const maskId = `mask-${uid}`
-  const filterId = `torn-${uid}`
-  const gradId = `grad-${uid}`
+  // SVG noise mask: fractal noise thresholded to BINARY black/white.
+  // White areas = overlay visible (paper), Black = overlay hidden (photo).
+  // The noise creates IRREGULAR TORN boundary when intersected with
+  // the radial gradient.
+  const noiseSvg =
+    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>` +
+    `<defs>` +
+    `<filter id='n' x='0%25' y='0%25' width='100%25' height='100%25'>` +
+    `<feTurbulence type='fractalNoise' baseFrequency='${noiseScale}' numOctaves='2' seed='5' result='noise'/>` +
+    `<feColorMatrix in='noise' type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2 -0.8' result='bin'/>` +
+    `</filter>` +
+    `</defs>` +
+    `<rect width='400' height='400' fill='black' filter='url(%23n)'/>` +
+    `</svg>`
+
+  // CSS mask: radial gradient (thin rim) + noise (torn texture)
+  // Intersect = overlay visible only where BOTH are white
+  const rimMask = `radial-gradient(ellipse at center, transparent ${innerStop}%, black ${outerStop}%, black 100%)`
+  const noiseMask = `url("${noiseSvg}")`
 
   return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity }}
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Radial gradient with VERY NARROW transition (1-2% of width).
-            Black center (photo visible) → white edge (paper visible).
-            No viewBox/preserveAspectRatio — uses pixel coords directly
-            so displacement is uniform regardless of aspect ratio. */}
-        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="black" />
-          <stop offset={`${innerStop}%`} stopColor="black" />
-          <stop offset={`${outerStop}%`} stopColor="white" />
-          <stop offset="100%" stopColor="white" />
-        </radialGradient>
-        {/* feDisplacementMap distorts the gradient boundary by fractal
-            noise, creating IRREGULAR TORN edge (not smooth oval).
-            Small displacement (1.5-2.5) = subtle jaggedness. */}
-        <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.04"
-            numOctaves="2"
-            seed="5"
-            result="noise"
-          />
-          <feDisplacementMap
-            in="SourceGraphic"
-            in2="noise"
-            scale={displacement}
-            xChannelSelector="R"
-            yChannelSelector="G"
-          />
-        </filter>
-        <mask id={maskId}>
-          <rect
-            width="100%"
-            height="100%"
-            fill={`url(#${gradId})`}
-            filter={`url(#${filterId})`}
-          />
-        </mask>
-      </defs>
-      {/* Soft warm white paper — NOT pure white, looks like real watercolor paper.
-          Visible only at thin torn rim (outer 1-2%), hidden in center. */}
-      <rect
-        width="100%"
-        height="100%"
-        fill="rgb(250, 245, 235)"
-        mask={`url(#${maskId})`}
-      />
-    </svg>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        // Warm beige paper color, NOT pure white
+        background: 'rgb(245, 238, 225)',
+        maskImage: `${rimMask}, ${noiseMask}`,
+        WebkitMaskImage: `${rimMask}, ${noiseMask}`,
+        maskComposite: 'intersect',
+        WebkitMaskComposite: 'source-in',
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
+        maskSize: '100% 100%, 100% 100%',
+        WebkitMaskSize: '100% 100%, 100% 100%',
+        opacity,
+      }}
+    />
   )
 }
