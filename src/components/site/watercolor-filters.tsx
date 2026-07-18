@@ -260,19 +260,19 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
     innerStop = 97
     outerStop = 99.5
     opacity = 0.3 + (strength / 33) * 0.15 // 0.30 → 0.45
-    displacement = 4
+    displacement = 8
   } else if (strength <= 66) {
     // Medium: 1.5% rim, more visible
     innerStop = 98
     outerStop = 99.7
     opacity = 0.4 + ((strength - 33) / 33) * 0.15 // 0.40 → 0.55
-    displacement = 5
+    displacement = 12
   } else {
     // Strong: 1% rim, prominent
     innerStop = 98.5
     outerStop = 99.8
     opacity = 0.5 + ((strength - 66) / 34) * 0.15 // 0.50 → 0.65
-    displacement = 6
+    displacement = 16
   }
 
   // Unique IDs
@@ -304,7 +304,7 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
         <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.05"
+            baseFrequency="0.03"
             numOctaves="2"
             seed="5"
             result="noise"
