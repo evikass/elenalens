@@ -256,23 +256,23 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   let displacement: number
 
   if (strength <= 33) {
-    // Light: 2% rim, subtle
+    // Light: 2% rim, very subtle
     innerStop = 97
     outerStop = 99.5
-    opacity = 0.3 + (strength / 33) * 0.15 // 0.30 → 0.45
-    displacement = 8
+    opacity = 0.25 + (strength / 33) * 0.1 // 0.25 → 0.35
+    displacement = 12
   } else if (strength <= 66) {
     // Medium: 1.5% rim, more visible
     innerStop = 98
     outerStop = 99.7
-    opacity = 0.4 + ((strength - 33) / 33) * 0.15 // 0.40 → 0.55
-    displacement = 12
+    opacity = 0.35 + ((strength - 33) / 33) * 0.1 // 0.35 → 0.45
+    displacement = 16
   } else {
     // Strong: 1% rim, prominent
     innerStop = 98.5
     outerStop = 99.8
-    opacity = 0.5 + ((strength - 66) / 34) * 0.15 // 0.50 → 0.65
-    displacement = 16
+    opacity = 0.45 + ((strength - 66) / 34) * 0.1 // 0.45 → 0.55
+    displacement = 20
   }
 
   // Unique IDs
@@ -331,7 +331,7 @@ export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
       <rect
         width="100"
         height="100"
-        fill="rgb(245, 238, 225)"
+        fill="rgb(225, 215, 195)"
         mask={`url(#${maskId})`}
       />
     </svg>
