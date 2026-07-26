@@ -9,6 +9,7 @@ import { Contact } from '@/components/site/contact'
 import { Footer } from '@/components/site/footer'
 import { AdminPanel } from '@/components/site/admin-panel'
 import { WatercolorFilters } from '@/components/site/watercolor-filters'
+import { VisitTracker } from '@/components/site/visit-tracker-client'
 
 export default function Home() {
   return (
@@ -17,6 +18,8 @@ export default function Home() {
           Rendered once globally so both Portfolio gallery and PhotoEditor
           can reference the filters via url(#watercolor-X). */}
       <WatercolorFilters />
+      {/* Log visit on page load (client-side only) */}
+      <VisitTracker />
       <Navbar />
       <main className="flex-1">
         <Hero />

@@ -27,6 +27,7 @@ import {
   type PhotoAdjustments,
 } from './photo-editor'
 import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
+import { getVisits, getVisitStats, clearVisits, type VisitEntry } from './visit-tracker'
 
 // Admin password — change here if needed
 const ADMIN_PASSWORD = 'Elena'
@@ -625,6 +626,11 @@ export function AdminPanel() {
                   })}
                 </Reorder.Group>
 
+                {/* Visit statistics */}
+                <div className="mt-12 p-5 rounded-sm border border-border bg-card">
+                  <VisitStatsBlock />
+                </div>
+
                 {/* Telegram config */}
                 <div className="mt-12 p-5 rounded-sm border border-border bg-card">
                   <h3 className="font-serif text-xl mb-2 flex items-center gap-2">
@@ -739,5 +745,115 @@ function TgConfigForm() {
         <Save className="h-3.5 w-3.5 mr-1" /> Сохранить
       </Button>
     </div>
+  )
+}
+
+/**
+ * Visit statistics block — shows who visited the site, when, and from what device.
+ * Data is stored in localStorage (per-device, last 100 visits).
+ */
+function VisitStatsBlock() {
+  const [visits, setVisits] = useState<VisitEntry[]>(() => typeof window !== 'undefined' ? getVisits() : [])
+  const [stats, setStats] = useState(() => typeof window !== 'undefined' ? getVisitStats() : { total: 0, today: 0, unique: 0, lastVisit: null as VisitEntry | null })
+  const { toast } = useToast()
+
+  const handleClear = () => {
+    clearVisits()
+    setVisits([])
+    setStats({ total: 0, today: 0, unique: 0, lastVisit: null })
+    toast({ title: 'История посещений очищена' })
+  }
+
+  return (
+    <>
+      <h3 className="font-serif text-xl mb-2 flex items-center gap-2">
+        <Eye className="h-4 w-4 text-primary" />
+        Статистика посещений
+      </h3>
+      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+        Записывается каждый вход на сайт. Данные хранятся локально в этом
+        браузере (последние 100 посещений).
+      </p>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="p-3 rounded-sm bg-secondary/50 text-center">
+          <div className="font-serif text-2xl text-primary">{stats.total}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+            Всего заходов
+          </div>
+        </div>
+        <div className="p-3 rounded-sm bg-secondary/50 text-center">
+          <div className="font-serif text-2xl text-primary">{stats.today}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+            Сегодня
+          </div>
+        </div>
+        <div className="p-3 rounded-sm bg-secondary/50 text-center">
+          <div className="font-serif text-2xl text-primary">{stats.unique}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+            Уник. устройств
+          </div>
+        </div>
+      </div>
+
+      {/* Last visit info */}
+      {stats.lastVisit && (
+        <div className="mb-4 p-3 rounded-sm border border-primary/30 bg-primary/5 text-sm">
+          <strong className="text-primary">Последний заход:</strong>{' '}
+          {stats.lastVisit.date} в {stats.lastVisit.time}
+          {' · '}
+          <span className="text-muted-foreground">
+            {stats.lastVisit.device} · {stats.lastVisit.browser}
+          </span>
+        </div>
+      )}
+
+      {/* Visit list */}
+      {visits.length > 0 ? (
+        <div className="max-h-72 overflow-y-auto custom-scroll rounded-sm border border-border">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border">
+              <tr className="text-left text-muted-foreground">
+                <th className="p-2 font-normal uppercase tracking-wider">Когда</th>
+                <th className="p-2 font-normal uppercase tracking-wider">Устройство</th>
+                <th className="p-2 font-normal uppercase tracking-wider">Браузер</th>
+                <th className="p-2 font-normal uppercase tracking-wider">Откуда</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visits.slice(0, 30).map((v, i) => (
+                <tr key={i} className="border-b border-border/40 hover:bg-secondary/30">
+                  <td className="p-2 whitespace-nowrap">
+                    <div className="text-foreground">{v.date}</div>
+                    <div className="text-muted-foreground text-[10px]">{v.time}</div>
+                  </td>
+                  <td className="p-2 text-muted-foreground">{v.device}</td>
+                  <td className="p-2 text-muted-foreground">{v.browser}</td>
+                  <td className="p-2 text-muted-foreground max-w-[150px] truncate" title={v.referrer}>
+                    {v.referrer}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          Посещений пока не записано
+        </p>
+      )}
+
+      {visits.length > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClear}
+          className="mt-3 text-muted-foreground hover:text-destructive"
+        >
+          <RotateCcw className="h-3.5 w-3.5 mr-1" /> Очистить историю
+        </Button>
+      )}
+    </>
   )
 }

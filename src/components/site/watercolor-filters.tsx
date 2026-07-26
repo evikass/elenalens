@@ -233,140 +233,64 @@ export function getWatercolorFilterId(strength: number): string {
 /**
  * React component that renders a THIN TORN paper-edge overlay.
  *
- * APPROACH: SVG <mask> with binary noise threshold, limited to edge.
+ * APPROACH: Pre-generated PNG mask with real torn paper texture.
  *
- * Unlike feDisplacementMap (which always produces smooth gradient edges),
- * this generates BINARY torn spots from fractal noise:
- *   1. feTurbulence generates fractal noise
- *   2. feColorMatrix thresholds noise to binary black/white
- *      (alpha > threshold → 1, else → 0) — creates RAGGED torn spots
- *   3. feComposite 'in' with radial gradient limits spots to edge only
- *      (center stays black = photo visible, edge gets torn spots)
+ * The mask (public/torn-edge-mask.png) is a 1024x1024 binary image:
+ *   - Black center (photo visible)
+ *   - White torn edges (paper visible) with fibrous, jagged texture
  *
- * Result: small torn beige streaks at photo edge, like brush didn't
- * reach — NOT smooth frame, NOT big white rim.
+ * The PNG was generated via AI image generation, then thresholded to
+ * binary black/white. Unlike SVG filters (which always produce smooth
+ * edges due to alpha interpolation), this gives TRUE torn paper edges
+ * with sharp fibrous streaks.
  *
- * Color is muted warm grey-beige at LOW opacity (0.2-0.5).
+ * The overlay div uses:
+ *   - background: muted warm grey-beige (not white)
+ *   - mask-image: url('/torn-edge-mask.png') — limits beige to edges
+ *   - mask-size: 100% 100% — stretches to fill any aspect ratio
+ *   - opacity: 0.3-0.6 scaled by strength
+ *
+ * Strength controls:
+ *   - Opacity (how visible the paper is)
+ *   - Inner radius (how far the torn edge extends inward)
  */
 export function WatercolorEdgeOverlay({ strength }: { strength: number }) {
   if (strength <= 0) return null
 
   // Per-strength parameters
-  let innerStop: number      // where edge zone begins
-  let outerStop: number      // where edge zone ends (always 100%)
   let opacity: number
-  let noiseScale: number     // turbulence frequency (smaller = bigger spots)
-  let threshold: number      // noise threshold for binary spots
+  let maskScale: number // controls how far the torn edge extends inward
+                        // larger = more of the mask's white area is visible
 
   if (strength <= 33) {
-    // Light: thin edge, few small spots
-    innerStop = 95
-    outerStop = 100
-    opacity = 0.2 + (strength / 33) * 0.1 // 0.20 → 0.30
-    noiseScale = 0.06   // medium spots
-    threshold = 0.65    // fewer spots pass
+    opacity = 0.25 + (strength / 33) * 0.15 // 0.25 → 0.40
+    maskScale = 100 + (strength / 33) * 10 // 100% → 110%
   } else if (strength <= 66) {
-    // Medium: more spots
-    innerStop = 93
-    outerStop = 100
-    opacity = 0.3 + ((strength - 33) / 33) * 0.1 // 0.30 → 0.40
-    noiseScale = 0.05
-    threshold = 0.55
+    opacity = 0.40 + ((strength - 33) / 33) * 0.15 // 0.40 → 0.55
+    maskScale = 110 + ((strength - 33) / 33) * 10 // 110% → 120%
   } else {
-    // Strong: dense torn spots
-    innerStop = 91
-    outerStop = 100
-    opacity = 0.4 + ((strength - 66) / 34) * 0.1 // 0.40 → 0.50
-    noiseScale = 0.04
-    threshold = 0.45
+    opacity = 0.55 + ((strength - 66) / 34) * 0.15 // 0.55 → 0.70
+    maskScale = 120 + ((strength - 66) / 34) * 10 // 120% → 130%
   }
 
-  // Unique IDs
-  const uid = `wc${++maskIdCounter}`
-  const maskId = `mask-${uid}`
-  const filterId = `torn-${uid}`
-  const gradId = `grad-${uid}`
-
-  // feColorMatrix threshold formula: alpha_out = alpha_in * k - offset
-  // We want: alpha > threshold → 1, else → 0
-  // k = 1/(1-threshold), offset = threshold/(1-threshold)
-  const k = 1 / (1 - threshold)
-  const offset = threshold / (1 - threshold)
+  const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
+  const maskUrl = `url("${basePath}/torn-edge-mask.png")`
 
   return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity }}
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Radial gradient: defines WHERE torn spots are allowed.
-            Black center (0-innerStop%) → white edge (outerStop-100%).
-            Only the white zone (edge) gets torn spots. */}
-        <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="black" />
-          <stop offset={`${innerStop}%`} stopColor="black" />
-          <stop offset={`${outerStop}%`} stopColor="white" />
-          <stop offset="100%" stopColor="white" />
-        </radialGradient>
-
-        {/* Filter generates BINARY torn spots from noise, limited to edge:
-            1. feTurbulence — fractal noise
-            2. feColorMatrix — threshold to binary (creates ragged spots)
-            3. feComposite 'in' with SourceGraphic (radial gradient) —
-               limits spots to edge zone only, center stays black */}
-        <filter id={filterId} x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency={noiseScale}
-            numOctaves="2"
-            seed="5"
-            result="noise"
-          />
-          {/* Threshold noise to BINARY: alpha > threshold → 1, else → 0.
-              Creates RAGGED torn spots, not smooth gradient. */}
-          <feColorMatrix
-            in="noise"
-            type="matrix"
-            values={`0 0 0 0 1
-                     0 0 0 0 1
-                     0 0 0 0 1
-                     0 0 0 ${k.toFixed(3)} ${(-offset).toFixed(3)}`}
-            result="binNoise"
-          />
-          {/* Limit binary noise to edge zone only (where gradient is white).
-              Center (gradient black) → result black (photo visible).
-              Edge (gradient white) → result = torn spots. */}
-          <feComposite
-            in="binNoise"
-            in2="SourceGraphic"
-            operator="in"
-          />
-        </filter>
-
-        <mask id={maskId}>
-          {/* Rect filled with radial gradient, filtered to torn spots.
-              The filter replaces the gradient with binary noise limited
-              to the edge zone. */}
-          <rect
-            width="100"
-            height="100"
-            fill={`url(#${gradId})`}
-            filter={`url(#${filterId})`}
-          />
-        </mask>
-      </defs>
-      {/* Muted warm grey-beige rect — NOT white.
-          Visible only where mask is white (torn spots at edge),
-          hidden in center (photo visible). */}
-      <rect
-        width="100"
-        height="100"
-        fill="rgb(215, 205, 185)"
-        mask={`url(#${maskId})`}
-      />
-    </svg>
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        background: 'rgb(225, 215, 195)',
+        maskImage: maskUrl,
+        WebkitMaskImage: maskUrl,
+        maskSize: `${maskScale}% ${maskScale}%`,
+        WebkitMaskSize: `${maskScale}% ${maskScale}%`,
+        maskPosition: 'center',
+        WebkitMaskPosition: 'center',
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
+        opacity,
+      }}
+    />
   )
 }
