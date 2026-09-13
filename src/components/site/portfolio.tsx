@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, X, ChevronLeft, ChevronRight, Info } from 'lucide-react'
 import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filters'
+import { getLutFilterString } from './photo-editor'
 
 const basePath = process.env.NODE_ENV === 'production' ? '/elenalens' : ''
 
@@ -138,6 +139,8 @@ const defaultShots: Shot[] = [
 interface PhotoAdjustments {
   watercolor: number
   unpaint: number
+  lut: string
+  lutIntensity: number
   shadows: number
   exposure: number
   warmth: number
@@ -184,6 +187,12 @@ function buildFilterString(a: PhotoAdjustments): string {
     `sepia(${sepia.toFixed(2)})`,
     `hue-rotate(${hueRotate.toFixed(1)}deg)`,
   ]
+
+  // Apply LUT color grading (blended by intensity)
+  const lutFilter = getLutFilterString(a.lut, a.lutIntensity)
+  if (lutFilter) {
+    parts.push(lutFilter)
+  }
 
   // Apply SVG watercolor filter if watercolor > 0
   const svgId = getWatercolorFilterId(a.watercolor)
@@ -369,7 +378,8 @@ export function Portfolio() {
               const filename = filenameFromSrc(shot.src)
               const adj = override.adjustments[filename]
               const hasAdj = !!adj && (
-                adj.watercolor > 0 || adj.unpaint > 0 || adj.shadows > 0 ||
+                adj.watercolor > 0 || adj.unpaint > 0 || !!adj.lut ||
+                adj.shadows > 0 ||
                 adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0
               )
               const filterStyle = hasAdj && adj
@@ -493,7 +503,7 @@ export function Portfolio() {
                 const currentFilename = filenameFromSrc(currentShot.src)
                 const currentAdj = override.adjustments[currentFilename]
                 const currentHasAdj = !!currentAdj && (
-                  currentAdj.watercolor > 0 || currentAdj.unpaint > 0 || currentAdj.shadows > 0 ||
+                  currentAdj.watercolor > 0 || currentAdj.unpaint > 0 || !!currentAdj.lut || currentAdj.shadows > 0 ||
                   currentAdj.exposure !== 0 || currentAdj.warmth !== 0 || currentAdj.contrast !== 0
                 )
                 return (

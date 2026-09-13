@@ -9,6 +9,8 @@ import { getWatercolorFilterId, WatercolorEdgeOverlay } from './watercolor-filte
 export interface PhotoAdjustments {
   watercolor: number      // 0..100 — сила акварели (растекание краски)
   unpaint: number         // 0..100 — непрокрас краев (белая бумага у края)
+  lut: string             // LUT preset name ('' = none)
+  lutIntensity: number    // 0..100 — сила LUT
   shadows: number         // 0..100 — вытягивание теней
   exposure: number        // -100..+100 — экспозиция
   warmth: number          // -100..+100 — теплый/холодный
@@ -18,10 +20,75 @@ export interface PhotoAdjustments {
 export const defaultAdjustments: PhotoAdjustments = {
   watercolor: 0,
   unpaint: 0,
+  lut: '',
+  lutIntensity: 0,
   shadows: 0,
   exposure: 0,
   warmth: 0,
   contrast: 0,
+}
+
+/**
+ * LUT presets — cinematic color grading looks.
+ * Each preset is a CSS filter string that approximates the LUT effect.
+ * Intensity (0-100%) blends between original and full LUT effect.
+ */
+export const LUT_PRESETS: { id: string; name: string; filter: string; description: string }[] = [
+  { id: '', name: 'Без LUT', filter: '', description: 'Без цветокоррекции' },
+  { id: 'cinematic', name: 'Кинематик', filter: 'contrast(1.15) saturate(0.85) hue-rotate(-5deg) brightness(0.95) sepia(0.08)', description: 'Teal & orange — голливудский стиль' },
+  { id: 'vintage', name: 'Винтаж', filter: 'sepia(0.35) contrast(0.9) saturate(0.8) brightness(1.05) hue-rotate(-10deg)', description: 'Тёплый выцветший ретро' },
+  { id: 'noir', name: 'Нуар', filter: 'grayscale(1) contrast(1.4) brightness(0.9)', description: 'Чёрно-белый, высокий контраст' },
+  { id: 'fade', name: 'Фэйд', filter: 'contrast(0.75) brightness(1.15) saturate(0.7) sepia(0.12)', description: 'Матовый приглушённый' },
+  { id: 'vivid', name: 'Вивид', filter: 'saturate(1.6) contrast(1.1) brightness(1.02)', description: 'Насыщенный яркий' },
+  { id: 'cool-blue', name: 'Холодный синий', filter: 'hue-rotate(180deg) saturate(1.2) brightness(0.95) contrast(1.05)', description: 'Холодная сине-зелёная гамма' },
+  { id: 'warm-sunset', name: 'Тёплый закат', filter: 'sepia(0.25) saturate(1.3) hue-rotate(-15deg) brightness(1.05) contrast(1.05)', description: 'Золотистый закатный свет' },
+  { id: 'matte', name: 'Матте', filter: 'contrast(0.85) brightness(1.08) saturate(0.85) sepia(0.05)', description: 'Мягкий матовый — Instagram-стиль' },
+  { id: 'teal-orange', name: 'Teal & Orange', filter: 'contrast(1.2) saturate(1.15) hue-rotate(-8deg) sepia(0.1) brightness(0.98)', description: 'Бирюзовые тени + оранжевые света' },
+  { id: 'forest', name: 'Лес', filter: 'hue-rotate(15deg) saturate(1.2) contrast(1.05) brightness(0.95) sepia(0.05)', description: 'Зелёно-природный' },
+  { id: 'pastel', name: 'Пастель', filter: 'saturate(0.65) brightness(1.12) contrast(0.9) sepia(0.08)', description: 'Нежный пастельный' },
+]
+
+/**
+ * Get LUT filter string blended by intensity.
+ * Returns empty string if no LUT or intensity is 0.
+ */
+export function getLutFilterString(lut: string, intensity: number): string {
+  if (!lut || intensity <= 0) return ''
+  const preset = LUT_PRESETS.find(p => p.id === lut)
+  if (!preset || !preset.filter) return ''
+
+  // Blend: at 0% intensity = no effect, at 100% = full preset
+  // We scale each filter value between 1.0 (no effect) and preset value
+  const t = intensity / 100
+
+  // Parse the preset filter and scale each function
+  // Simple approach: multiply the "distance from neutral" by t
+  const filterParts = preset.filter.match(/(\w+)\(([^)]+)\)/g)
+  if (!filterParts) return ''
+
+  const scaledParts = filterParts.map(part => {
+    const match = part.match(/(\w+)\(([^)]+)\)/)
+    if (!match) return part
+    const [, fn, args] = match
+
+    if (fn === 'grayscale' || fn === 'sepia') {
+      // 0..1 range, scale by t
+      const val = parseFloat(args)
+      return `${fn}(${(val * t).toFixed(3)})`
+    } else if (fn === 'hue-rotate') {
+      // degrees, scale by t
+      const val = parseFloat(args)
+      return `${fn}(${(val * t).toFixed(1)}deg)`
+    } else if (fn === 'contrast' || fn === 'saturate' || fn === 'brightness') {
+      // 1.0 = neutral, scale distance from 1.0 by t
+      const val = parseFloat(args)
+      const scaled = 1.0 + (val - 1.0) * t
+      return `${fn}(${scaled.toFixed(3)})`
+    }
+    return part
+  })
+
+  return scaledParts.join(' ')
 }
 
 interface PhotoEditorProps {
@@ -76,6 +143,12 @@ export function buildFilterString(a: PhotoAdjustments): string {
     `sepia(${sepia.toFixed(2)})`,
     `hue-rotate(${hueRotate.toFixed(1)}deg)`,
   ]
+
+  // Apply LUT color grading (blended by intensity)
+  const lutFilter = getLutFilterString(a.lut, a.lutIntensity)
+  if (lutFilter) {
+    filterParts.push(lutFilter)
+  }
 
   // Apply SVG watercolor filter if watercolor > 0
   const svgId = getWatercolorFilterId(a.watercolor)
@@ -306,6 +379,55 @@ export function PhotoEditor({
                   <br />
                   <strong>Непрокрас краёв</strong> — мягкая белая бумага у самого края, как будто кисть не достала.
                   Можно использовать отдельно или вместе.
+                </p>
+              </div>
+
+              {/* LUT Color Grading */}
+              <div className="p-5 rounded-sm border border-primary/30 bg-primary/5 space-y-5">
+                <div className="flex items-center gap-2 text-sm">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <strong>LUT — Цветокоррекция</strong>
+                </div>
+
+                {/* LUT preset dropdown */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                    <Sun className="h-3.5 w-3.5 text-primary" />
+                    Пресет
+                  </label>
+                  <select
+                    value={adj.lut}
+                    onChange={(e) => update('lut')(e.target.value as string)}
+                    className="flex h-11 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    {LUT_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  {adj.lut && (
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {LUT_PRESETS.find(p => p.id === adj.lut)?.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* LUT intensity slider */}
+                {adj.lut && (
+                  <Slider
+                    label="Интенсивность LUT"
+                    icon={Contrast}
+                    value={adj.lutIntensity}
+                    min={0}
+                    max={100}
+                    onChange={update('lutIntensity')}
+                    format={(v) => `${v}%`}
+                  />
+                )}
+
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  LUT (Look-Up Table) — профессиональная цветокоррекция как в кино.
+                  Выберите пресет и настройте интенсивность. Применяется поверх
+                  остальных фильтров.
                 </p>
               </div>
 

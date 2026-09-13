@@ -515,7 +515,7 @@ export function AdminPanel() {
                     const isHidden = override.hidden.includes(item.filename)
                     const isWc = override.watercolor.includes(item.filename)
                     const adj = override.adjustments[item.filename]
-                    const hasAdj = !!adj && (adj.watercolor > 0 || adj.unpaint > 0 || adj.shadows > 0 || adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0)
+                    const hasAdj = !!adj && (adj.watercolor > 0 || adj.unpaint > 0 || !!adj.lut || adj.shadows > 0 || adj.exposure !== 0 || adj.warmth !== 0 || adj.contrast !== 0)
                     const customTitle =
                       override.titles[item.filename] ?? item.title
                     return (
